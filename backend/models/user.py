@@ -9,4 +9,4 @@ class User(Base):
     refresh_token = Column(String, nullable=False)
     display_name = Column(String)
     email = Column(String)
-    last_login = Column(TIMESTAMP)
+    last_login = Column(TIMESTAMP(timezone=True))
