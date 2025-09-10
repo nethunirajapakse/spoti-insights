@@ -15,7 +15,7 @@ class UserResponse(UserBase):
     last_login: Optional[datetime]
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class SpotifyToken(BaseModel):
     access_token: str
