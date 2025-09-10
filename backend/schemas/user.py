@@ -21,7 +21,6 @@ class SpotifyToken(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
-    refresh_token: Optional[str]
     scope: str
 
 class SpotifyUser(BaseModel):

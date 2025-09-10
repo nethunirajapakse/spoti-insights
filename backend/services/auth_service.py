@@ -47,6 +47,7 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
     """
     Refreshes the Spotify access token for a given user.
+    The refresh token is used internally but never exposed in the response.
     """
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
     if not db_user:
@@ -57,9 +58,8 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
 
     new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
 
-    # Optionally update the refresh token if Spotify provides a new one
+    # Optionally update the refresh token internally if Spotify provides a new one
     if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.refresh_token:
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
-    new_tokens["refresh_token"] = new_tokens.get("refresh_token") 
 
     return new_tokens
