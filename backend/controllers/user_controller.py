@@ -18,4 +18,4 @@ def create_user_endpoint(user: UserBase, db: Session = Depends(get_db)):
     db_user = user_service.get_user_by_spotify_id(db, user.spotify_id)
     if db_user:
         raise HTTPException(status_code=400, detail="User already exists")
-    return user_service.create_user(db, user, refresh_token="dummy_token")
+    return user_service.create_user(db, user)
