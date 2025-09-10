@@ -60,6 +60,6 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
     # Optionally update the refresh token if Spotify provides a new one
     if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.refresh_token:
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
-    new_tokens["refresh_token"] = new_tokens.get("refresh_token", None) 
+    new_tokens["refresh_token"] = new_tokens.get("refresh_token") 
 
     return new_tokens
