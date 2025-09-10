@@ -32,3 +32,17 @@ def update_user_login_and_token(db: Session, spotify_id: str, refresh_token: str
         db.commit()
         db.refresh(db_user)
     return db_user
+
+def update_user_refresh_token(db: Session, spotify_id: str, new_refresh_token: str):
+    """
+    Updates only the refresh token for a given user.
+    This is useful if the Spotify API ever returns a new refresh token
+    during a token refresh flow (though not common for Spotify).
+    """
+    db_user = get_user_by_spotify_id(db, spotify_id)
+    if db_user:
+        db_user.refresh_token = new_refresh_token
+        db.add(db_user) 
+        db.commit()
+        db.refresh(db_user)
+    return db_user

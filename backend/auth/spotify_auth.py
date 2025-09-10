@@ -63,3 +63,4 @@ async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
         )
         response.raise_for_status()
         return response.json()
+    
