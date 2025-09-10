@@ -20,7 +20,13 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-def update_user_login_and_token(db: Session, spotify_id: str, refresh_token: str, display_name: Optional[str] = None, email: Optional[str] = None):
+def update_user_login_and_token(
+    db: Session,
+    spotify_id: str,
+    refresh_token: str,
+    display_name: Optional[str] = None,
+    email: Optional[str] = None,
+):
     db_user = get_user_by_spotify_id(db, spotify_id)
     if db_user:
         db_user.refresh_token = refresh_token
