@@ -63,4 +63,3 @@ async def refresh_access_token_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during token refresh: {str(e)}"
         )
-    
