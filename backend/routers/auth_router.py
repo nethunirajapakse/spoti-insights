@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from backend.auth import spotify_auth
 from backend.database.connection import get_db
 from backend.services import auth_service 
-from backend.schemas.user import UserResponse, SpotifyToken
+from backend.schemas.user import UserResponse, SpotifyToken, RefreshTokenRequest
 import httpx
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -35,9 +35,12 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
         )
 
 @router.post("/spotify/refresh_access_token", response_model=SpotifyToken)
-async def refresh_access_token_endpoint(spotify_id: str, db: Session = Depends(get_db)):
+async def refresh_access_token_endpoint(
+    request: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
     try:
-        new_tokens = await auth_service.refresh_user_spotify_access_token(db, spotify_id)
+        new_tokens = await auth_service.refresh_user_spotify_access_token(db, request.spotify_id)
         return new_tokens
     except ValueError as e:
         if "User not found" in str(e):

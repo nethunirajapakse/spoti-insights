@@ -28,3 +28,6 @@ class SpotifyUser(BaseModel):
     id: str
     display_name: Optional[str] = None
     email: Optional[str] = None
+
+class RefreshTokenRequest(BaseModel):
+    spotify_id: str
