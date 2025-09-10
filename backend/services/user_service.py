@@ -42,7 +42,6 @@ def update_user_refresh_token(db: Session, spotify_id: str, new_refresh_token: s
     db_user = get_user_by_spotify_id(db, spotify_id)
     if db_user:
         db_user.refresh_token = new_refresh_token
-        db.add(db_user) 
         db.commit()
         db.refresh(db_user)
     return db_user
