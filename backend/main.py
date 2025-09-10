@@ -1,5 +1,3 @@
-
-
 from fastapi import FastAPI
 from backend.controllers import user_controller, auth_controller # Import auth_controller
 
