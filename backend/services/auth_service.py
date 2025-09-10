@@ -3,6 +3,13 @@ from backend.auth import spotify_auth
 from backend.services import user_service
 from backend.schemas.user import UserCreate, UserResponse
 from typing import Dict, Any
+from backend.exceptions import (
+    AuthorizationCodeMissingError,
+    SpotifyTokensError,
+    SpotifyUserIDMissingError,
+    UserNotFoundError,
+    RefreshTokenMissingError
+)
 
 async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     """
@@ -10,14 +17,14 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     fetches user profile, and creates or updates the user in the database.
     """
     if not code:
-        raise ValueError("Authorization code not provided.")
+        raise AuthorizationCodeMissingError()
 
     token_info: Dict[str, Any] = await spotify_auth.get_spotify_tokens(code)
     access_token = token_info.get("access_token")
     refresh_token = token_info.get("refresh_token")
 
     if not access_token or not refresh_token:
-        raise ValueError("Failed to retrieve Spotify tokens.")
+        raise SpotifyTokensError()
 
     spotify_user_profile: Dict[str, Any] = await spotify_auth.get_spotify_user_profile(access_token)
     spotify_id = spotify_user_profile.get("id")
@@ -25,16 +32,15 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     email = spotify_user_profile.get("email")
 
     if not spotify_id:
-        raise ValueError("Failed to retrieve Spotify user ID.")
+        raise SpotifyUserIDMissingError()
 
-    db_user = user_service.get_user_by_spotify_id(db, spotify_id)
-
-    if db_user:
+    try:
+        db_user = user_service.get_user_by_spotify_id(db, spotify_id)
         updated_user = user_service.update_user_login_and_token(
             db, spotify_id, refresh_token, display_name, email
         )
         return UserResponse.from_orm(updated_user)
-    else:
+    except UserNotFoundError:
         new_user_data = UserCreate(
             spotify_id=spotify_id,
             display_name=display_name,
@@ -44,17 +50,16 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
         created_user = user_service.create_user(db, new_user_data)
         return UserResponse.from_orm(created_user)
 
+
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
     """
     Refreshes the Spotify access token for a given user.
-    The refresh token is used internally but never exposed in the response.
+    Raises UserNotFoundError or RefreshTokenMissingError on failure.
     """
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
-    if not db_user:
-        raise ValueError("User not found.")
 
     if not db_user.refresh_token:
-        raise ValueError("Refresh token not found for this user. User needs to re-authenticate.")
+        raise RefreshTokenMissingError()
 
     new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
 
