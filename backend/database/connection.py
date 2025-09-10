@@ -7,7 +7,13 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, echo=True) 
+# Make SQL echo configurable via environment variable (default: False)
+def str2bool(value):
+    return str(value).lower() in ("1", "true", "yes", "on")
+
+SQLALCHEMY_ECHO = str2bool(os.getenv("SQLALCHEMY_ECHO", "False"))
+
+engine = create_engine(DATABASE_URL, echo=SQLALCHEMY_ECHO)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
