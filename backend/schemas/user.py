@@ -7,9 +7,25 @@ class UserBase(BaseModel):
     display_name: Optional[str]
     email: Optional[str]
 
+class UserCreate(UserBase):
+    refresh_token: str 
+
 class UserResponse(UserBase):
     id: int
     last_login: Optional[datetime]
 
     class Config:
         orm_mode = True
+
+# New schemas for Spotify OAuth
+class SpotifyToken(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    refresh_token: Optional[str]
+    scope: str
+
+class SpotifyUser(BaseModel):
+    id: str
+    display_name: Optional[str] = None
+    email: Optional[str] = None
