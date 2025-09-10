@@ -10,4 +10,3 @@ app.include_router(user_router.router)
 @app.get("/")
 def root():
     return {"message": "FastAPI + PostgreSQL connection working!"}
-
