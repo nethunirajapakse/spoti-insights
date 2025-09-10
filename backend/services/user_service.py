@@ -43,9 +43,9 @@ def update_user_login_and_token(
 
     db_user.refresh_token = refresh_token
     db_user.last_login = datetime.now(timezone.utc)
-    if display_name is not None:
+    if display_name:
         db_user.display_name = display_name
-    if email is not None:
+    if email:
         db_user.email = email
     db.commit()
     db.refresh(db_user)
