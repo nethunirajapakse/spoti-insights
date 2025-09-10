@@ -27,7 +27,7 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
         # Exchange authorization code for tokens
         token_info: Dict[str, Any] = await spotify_auth.get_spotify_tokens(code)
         access_token = token_info.get("access_token")
-        refresh_token = token_info.get("refresh_token") # This is crucial
+        refresh_token = token_info.get("refresh_token")
 
         if not access_token or not refresh_token:
             raise HTTPException(
@@ -35,7 +35,6 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
                 detail="Failed to retrieve Spotify tokens."
             )
 
-        # Get user profile from Spotify
         spotify_user_profile: Dict[str, Any] = await spotify_auth.get_spotify_user_profile(access_token)
         spotify_id = spotify_user_profile.get("id")
         display_name = spotify_user_profile.get("display_name")

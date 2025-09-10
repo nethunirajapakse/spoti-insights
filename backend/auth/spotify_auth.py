@@ -1,4 +1,3 @@
-# backend/services/spotify_auth.py
 import os
 import httpx
 from dotenv import load_dotenv
@@ -9,7 +8,7 @@ load_dotenv()
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI") # e.g., http://localhost:8000/callback
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI") 
 
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
@@ -37,7 +36,7 @@ async def get_spotify_tokens(code: str) -> Dict[str, Any]:
                 "client_secret": SPOTIFY_CLIENT_SECRET,
             },
         )
-        response.raise_for_status() # Raise an exception for HTTP errors
+        response.raise_for_status() 
         return response.json()
 
 async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:

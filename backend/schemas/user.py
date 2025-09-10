@@ -17,7 +17,6 @@ class UserResponse(UserBase):
     class Config:
         orm_mode = True
 
-# New schemas for Spotify OAuth
 class SpotifyToken(BaseModel):
     access_token: str
     token_type: str
