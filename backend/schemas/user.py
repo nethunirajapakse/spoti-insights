@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     email: Optional[str]
 
 class UserCreate(UserBase):
-    refresh_token: str 
+    refresh_token: str
 
 class UserResponse(UserBase):
     id: int
