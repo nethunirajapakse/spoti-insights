@@ -9,3 +9,6 @@ __pycache__/
 # Environment variables
 .env
 *.env
+
+# Node.js dependencies
+node_modules/
