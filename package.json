@@ -1,0 +1,13 @@
+{
+  "name": "spoti-insights",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "yarn workspace frontend dev",
+    "build": "yarn workspace frontend build",
+    "lint": "yarn workspace frontend lint",
+    "preview": "yarn workspace frontend preview"
+  }
+}
