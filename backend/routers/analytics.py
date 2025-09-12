@@ -18,7 +18,7 @@ async def get_spotify_access_token_for_authenticated_user(
     It uses the refresh token stored in the database.
     """
     try:
-        #
+        # Refresh the user's Spotify access token using the stored refresh token.
         token_data = await auth_service.refresh_user_spotify_access_token(db, current_user.spotify_id)
         return token_data["access_token"]
     except UserNotFoundError:
