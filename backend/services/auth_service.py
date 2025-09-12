@@ -10,11 +10,13 @@ from backend.exceptions import (
     UserNotFoundError,
     RefreshTokenMissingError
 )
+from backend.auth.jwt_utils import create_access_token
 
 async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     """
     Handles the Spotify authentication callback, exchanges code for tokens,
     fetches user profile, and creates or updates the user in the database.
+    Generates and returns a JWT for session management.
     """
     if not code:
         raise AuthorizationCodeMissingError()
@@ -34,12 +36,13 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     if not spotify_id:
         raise SpotifyUserIDMissingError()
 
+    db_user = None
     try:
         db_user = user_service.get_user_by_spotify_id(db, spotify_id)
         updated_user = user_service.update_user_login_and_token(
             db, spotify_id, refresh_token, display_name, email
         )
-        return UserResponse.from_orm(updated_user)
+        db_user = updated_user
     except UserNotFoundError:
         new_user_data = UserCreate(
             spotify_id=spotify_id,
@@ -48,7 +51,14 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
             refresh_token=refresh_token
         )
         created_user = user_service.create_user(db, new_user_data)
-        return UserResponse.from_orm(created_user)
+        db_user = created_user 
+
+    jwt_data = {"sub": db_user.spotify_id, "user_id": db_user.id}
+    jwt_token = create_access_token(data=jwt_data)
+
+    response = UserResponse.from_orm(db_user)
+    response.token = jwt_token
+    return response
 
 
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
@@ -59,11 +69,13 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
 
     if not db_user.refresh_token:
-        raise RefreshTokenMissingError()
+        raise RefreshTokenMissingError(f"Refresh token missing for user {spotify_id}.")
 
     new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
 
-    # Optionally update the refresh token internally if Spotify provides a new one
+    if not new_tokens or "access_token" not in new_tokens:
+        raise SpotifyTokensError("Failed to refresh access token from Spotify.")
+
     if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.refresh_token:
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
 

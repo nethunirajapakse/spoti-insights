@@ -13,6 +13,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     last_login: Optional[datetime]
+    token: Optional[str] = None
 
     class Config:
         from_attributes = True

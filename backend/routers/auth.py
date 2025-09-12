@@ -20,7 +20,7 @@ async def spotify_login():
     auth_url = spotify_auth.get_authorize_url()
     return {"auth_url": auth_url}
 
-@router.get("/spotify/callback", response_model=UserResponse)
+@router.get("/spotify/callback", response_model=UserResponse) # UserResponse now contains the JWT
 async def spotify_callback(code: str, db: Session = Depends(get_db)):
     try:
         user_response = await auth_service.handle_spotify_callback(code, db)
@@ -41,7 +41,14 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
             detail=f"An unexpected error occurred: {str(e)}"
         )
 
-@router.post("/spotify/refresh_access_token", response_model=SpotifyToken)
+# This endpoint refreshes the Spotify access token, NOT the JWT.
+# Its utility might decrease if the get_spotify_access_token_for_authenticated_user
+# dependency handles this internally.
+@router.post(
+    "/spotify/refresh_access_token",
+    response_model=SpotifyToken,
+    deprecated=True  
+)
 async def refresh_access_token_endpoint(
     request: RefreshTokenRequest,
     db: Session = Depends(get_db)
@@ -63,3 +70,4 @@ async def refresh_access_token_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during token refresh: {str(e)}"
         )
+    
