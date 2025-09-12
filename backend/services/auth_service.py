@@ -69,7 +69,7 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
 
     if not db_user.refresh_token:
-        raise RefreshTokenMissingError(f"Refresh token missing for user {spotify_id}.")
+        raise RefreshTokenMissingError()
 
     new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
 
