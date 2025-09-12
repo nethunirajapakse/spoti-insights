@@ -5,6 +5,7 @@ from backend.database.connection import get_db
 from backend.auth.jwt_utils import decode_access_token
 from backend.services import user_service
 from backend.models.user import User
+from backend.exceptions import UserNotFoundError
 
 security_scheme = HTTPBearer(scheme_name="BearerAuth") 
 
@@ -28,8 +29,9 @@ async def get_current_user(
     if spotify_id is None:
         raise credentials_exception
     
-    user = user_service.get_user_by_spotify_id(db, spotify_id)
-    if user is None:
+    try:
+        user = user_service.get_user_by_spotify_id(db, spotify_id)
+    except UserNotFoundError:
         raise credentials_exception
     
     return user
