@@ -1,17 +1,21 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from backend.database.connection import get_db
 from backend.auth.jwt_utils import decode_access_token
 from backend.services import user_service
 from backend.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/spotify/refresh_access_token") 
+security_scheme = HTTPBearer(scheme_name="BearerAuth") 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: Session = Depends(get_db)
+) -> User:
     """
     Dependency to get the current authenticated user based on a JWT.
     """
+    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
