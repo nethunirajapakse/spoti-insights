@@ -43,7 +43,7 @@ async def get_user_top_items_endpoint(
     item_type: str, 
     time_range: str = Query("medium_term", description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"),
     limit: int = Query(10, ge=1, le=50, description="The number of entities to return. Default: 10. Minimum: 1. Maximum: 50."),
-    access_token: str = Depends(get_spotify_access_token_for_authenticated_user) # <-- Use the new dependency
+    access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
     """
     Retrieves the authenticated user's top artists or tracks from Spotify.
