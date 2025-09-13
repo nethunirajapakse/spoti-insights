@@ -65,9 +65,13 @@ async def _make_spotify_request(
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
+            # Try to extract error message from JSON, fallback to response text if not JSON
+            try:
+                error_message = e.response.json().get('error', {}).get('message', e.response.text)
+            except ValueError:
+                error_message = e.response.text
             detail = (
-                f"Spotify API error ({e.response.status_code}): "
-                f"{e.response.json().get('error', {}).get('message', e.response.text)}"
+                f"Spotify API error ({e.response.status_code}): {error_message}"
             )
             raise SpotifyAPIError(detail, e.response.status_code, e.response.text)
         except httpx.RequestError as e:
