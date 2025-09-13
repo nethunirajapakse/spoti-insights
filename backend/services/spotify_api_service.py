@@ -1,6 +1,10 @@
 import httpx
 from typing import Dict, Any
 from enum import Enum
+import logging 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
@@ -69,9 +73,8 @@ async def _make_spotify_request(
         SpotifyAPIError: If the API call fails or a network error occurs.
     """
     if _spotify_client is None:
-        print("Warning: Spotify client not initialized. Initializing now.")
+        logger.warning("Spotify HTTP client not initialized. Initializing now.")
         init_spotify_client()
-
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"

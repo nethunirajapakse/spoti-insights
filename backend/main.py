@@ -4,6 +4,10 @@ from backend.routers import auth, user, analytics
 from backend.config.middleware import configure_middleware
 from backend.utils.openapi import customize_openapi
 from backend.services import spotify_api_service
+import logging 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,11 +16,10 @@ async def lifespan(app: FastAPI):
     Initializes and closes the Spotify HTTP client.
     """
     spotify_api_service.init_spotify_client()
-    print("Spotify HTTP client initialized.")
+    logger.info("Spotify HTTP client initialized.") 
     yield
-
     await spotify_api_service.close_spotify_client()
-    print("Spotify HTTP client closed.")
+    logger.info("Spotify HTTP client closed.") 
 
 app = FastAPI(title="Spoti-Insights API", lifespan=lifespan)
 
