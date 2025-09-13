@@ -3,14 +3,15 @@ from sqlalchemy.orm import Session
 from backend.database.connection import get_db
 from backend.services import auth_service, spotify_api_service
 from backend.exceptions import UserNotFoundError, RefreshTokenMissingError
-from backend.dependencies import get_current_user 
-from backend.models.user import User 
+from backend.dependencies import get_current_user
+from backend.models.user import User
 from typing import Dict, Any
+from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 async def get_spotify_access_token_for_authenticated_user(
-    current_user: User = Depends(get_current_user), 
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> str:
     """
@@ -40,8 +41,8 @@ async def get_spotify_access_token_for_authenticated_user(
 
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(
-    item_type: str, 
-    time_range: str = Query("medium_term", description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"),
+    item_type: SpotifyTopItemType,
+    time_range: SpotifyTimeRange = Query(SpotifyTimeRange.MEDIUM_TERM, description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"), # Now directly using the Enum for query parameter validation
     limit: int = Query(10, ge=1, le=50, description="The number of entities to return. Default: 10. Minimum: 1. Maximum: 50."),
     access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
@@ -63,7 +64,7 @@ async def get_user_top_items_endpoint(
 async def get_user_playlists_endpoint(
     limit: int = Query(20, ge=1, le=50, description="The number of playlists to return. Default: 20. Minimum: 1. Maximum: 50."),
     offset: int = Query(0, ge=0, description="The index of the first playlist to return."),
-    access_token: str = Depends(get_spotify_access_token_for_authenticated_user) 
+    access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
     """
     Retrieves the authenticated user's playlists from Spotify.
