@@ -55,6 +55,8 @@ async def get_user_playlists(access_token: str, limit: int = 20, offset: int = 0
     return await _make_spotify_request(access_token, "GET", "/me/playlists", params=params)
 
 async def get_recently_played_tracks(access_token: str, limit: int = 20) -> Dict[str, Any]:
+    if not (1 <= limit <= 50):
+        raise ValueError("limit must be between 1 and 50 (inclusive)")
     params = {
         "limit": limit
     }
