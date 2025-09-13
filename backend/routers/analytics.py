@@ -42,7 +42,7 @@ async def get_spotify_access_token_for_authenticated_user(
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(
     item_type: SpotifyTopItemType,
-    time_range: SpotifyTimeRange = Query(SpotifyTimeRange.MEDIUM_TERM, description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"), # Now directly using the Enum for query parameter validation
+    time_range: SpotifyTimeRange = Query(SpotifyTimeRange.MEDIUM_TERM, description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"),
     limit: int = Query(10, ge=1, le=50, description="The number of entities to return. Default: 10. Minimum: 1. Maximum: 50."),
     access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
