@@ -50,7 +50,7 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
             refresh_token=refresh_token
         )
         created_user = user_service.create_user(db, new_user_data)
-        db_user = created_user 
+        db_user = created_user
 
     jwt_data = {"sub": db_user.spotify_id, "user_id": db_user.id}
     jwt_token = create_access_token(data=jwt_data)
