@@ -7,6 +7,8 @@ from backend.dependencies import get_current_user
 from backend.models.user import User
 from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
+from backend.services.spotify_api_service import DEFAULT_SPOTIFY_LIMIT, MAX_SPOTIFY_LIMIT
+
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -43,7 +45,7 @@ async def get_spotify_access_token_for_authenticated_user(
 async def get_user_top_items_endpoint(
     item_type: SpotifyTopItemType,
     time_range: SpotifyTimeRange = Query(SpotifyTimeRange.MEDIUM_TERM, description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"),
-    limit: int = Query(10, ge=1, le=50, description="The number of entities to return. Default: 10. Minimum: 1. Maximum: 50."),
+    limit: int = Query(DEFAULT_SPOTIFY_LIMIT, ge=1, le=MAX_SPOTIFY_LIMIT, description=f"The number of entities to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."),
     access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
     """
@@ -62,7 +64,7 @@ async def get_user_top_items_endpoint(
 
 @router.get("/playlists", summary="Get a user's playlists")
 async def get_user_playlists_endpoint(
-    limit: int = Query(20, ge=1, le=50, description="The number of playlists to return. Default: 20. Minimum: 1. Maximum: 50."),
+    limit: int = Query(DEFAULT_SPOTIFY_LIMIT, ge=1, le=MAX_SPOTIFY_LIMIT, description=f"The number of playlists to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."),
     offset: int = Query(0, ge=0, description="The index of the first playlist to return."),
     access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
@@ -80,7 +82,7 @@ async def get_user_playlists_endpoint(
 
 @router.get("/recently-played", summary="Get a user's recently played tracks")
 async def get_user_recently_played_endpoint(
-    limit: int = Query(20, ge=1, le=50, description="The number of tracks to return. Default: 20. Minimum: 1. Maximum: 50."),
+    limit: int = Query(DEFAULT_SPOTIFY_LIMIT, ge=1, le=MAX_SPOTIFY_LIMIT, description=f"The number of tracks to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."),
     access_token: str = Depends(get_spotify_access_token_for_authenticated_user)
 ) -> Dict[str, Any]:
     """

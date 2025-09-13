@@ -24,6 +24,27 @@ class SpotifyTopItemType(Enum):
 DEFAULT_SPOTIFY_LIMIT = 20
 MAX_SPOTIFY_LIMIT = 50
 
+_spotify_client: httpx.AsyncClient = None
+
+def init_spotify_client():
+    """
+    Initializes the global httpx.AsyncClient for Spotify API calls.
+    This should be called once during application startup.
+    """
+    global _spotify_client
+    if _spotify_client is None:
+        _spotify_client = httpx.AsyncClient(base_url=SPOTIFY_API_BASE_URL)
+
+async def close_spotify_client():
+    """
+    Closes the global httpx.AsyncClient.
+    This should be called once during application shutdown.
+    """
+    global _spotify_client
+    if _spotify_client is not None:
+        await _spotify_client.aclose()
+        _spotify_client = None
+
 async def _make_spotify_request(
     access_token: str,
     method: str,
@@ -47,37 +68,39 @@ async def _make_spotify_request(
     Raises:
         SpotifyAPIError: If the API call fails or a network error occurs.
     """
+    if _spotify_client is None:
+        print("Warning: Spotify client not initialized. Initializing now.")
+        init_spotify_client()
+
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    async with httpx.AsyncClient() as client:
+    try:
+        response = await _spotify_client.request(
+            method,
+            url_path,
+            headers=headers,
+            params=params,
+            json=json_data,
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
         try:
-            response = await client.request(
-                method,
-                f"{SPOTIFY_API_BASE_URL}{url_path}",
-                headers=headers,
-                params=params,
-                json=json_data,
-                timeout=10
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            # Try to extract error message from JSON, fallback to response text if not JSON
-            try:
-                error_message = e.response.json().get('error', {}).get('message', e.response.text)
-            except ValueError:
-                error_message = e.response.text
-            detail = (
+            error_message = e.response.json().get('error', {}).get('message', e.response.text)
+        except ValueError:
+            error_message = e.response.text
+        detail = (
                 f"Spotify API error ({e.response.status_code}): {error_message}"
             )
-            raise SpotifyAPIError(detail, e.response.status_code, e.response.text)
-        except httpx.RequestError as e:
-            raise SpotifyAPIError(f"Network error while requesting Spotify API: {e}")
-        except Exception as e:
-            raise SpotifyAPIError(f"An unexpected error occurred during Spotify API call: {e}")
+        raise SpotifyAPIError(detail, e.response.status_code, e.response.text)
+    except httpx.RequestError as e:
+        raise SpotifyAPIError(f"Network error while requesting Spotify API: {e}")
+    except Exception as e:
+        raise SpotifyAPIError(f"An unexpected error occurred during Spotify API call: {e}")
 
 async def get_user_top_items(
     access_token: str,
