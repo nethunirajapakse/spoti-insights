@@ -36,7 +36,6 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     if not spotify_id:
         raise SpotifyUserIDMissingError()
 
-    db_user = None
     try:
         db_user = user_service.get_user_by_spotify_id(db, spotify_id)
         updated_user = user_service.update_user_login_and_token(
