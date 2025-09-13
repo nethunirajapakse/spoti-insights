@@ -102,7 +102,7 @@ async def get_user_top_items(
         ValueError: If the limit is out of the valid range.
         SpotifyAPIError: If the API call fails.
     """
-    if not (1 <= limit <= MAX_SPOTIFY_LIMIT): 
+    if not (1 <= limit <= MAX_SPOTIFY_LIMIT):
         raise ValueError(f"Limit for top items must be between 1 and {MAX_SPOTIFY_LIMIT} (inclusive).")
 
     params = {
@@ -113,7 +113,7 @@ async def get_user_top_items(
 
 async def get_user_playlists(
     access_token: str,
-    limit: int = DEFAULT_SPOTIFY_LIMIT, 
+    limit: int = DEFAULT_SPOTIFY_LIMIT,
     offset: int = 0
 ) -> Dict[str, Any]:
     """
@@ -142,7 +142,7 @@ async def get_user_playlists(
 
 async def get_recently_played_tracks(
     access_token: str,
-    limit: int = DEFAULT_SPOTIFY_LIMIT 
+    limit: int = DEFAULT_SPOTIFY_LIMIT
 ) -> Dict[str, Any]:
     """
     Fetches a user's recently played tracks.
@@ -158,7 +158,7 @@ async def get_recently_played_tracks(
         ValueError: If the limit is out of the valid range.
         SpotifyAPIError: If the API call fails.
     """
-    if not (1 <= limit <= MAX_SPOTIFY_LIMIT): 
+    if not (1 <= limit <= MAX_SPOTIFY_LIMIT):
         raise ValueError(f"Limit for recently played tracks must be between 1 and {MAX_SPOTIFY_LIMIT} (inclusive).")
     params = {
         "limit": limit
