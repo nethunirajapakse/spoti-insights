@@ -1,15 +1,36 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from backend.routers import auth
-from backend.routers import user
+from backend.routers import auth, user, analytics
 from backend.config.middleware import configure_middleware
+from backend.utils.openapi import customize_openapi
+from backend.services import spotify_api_service
+import logging 
 
-app = FastAPI(title="Spoti-Insights API")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Context manager for managing the lifespan of the FastAPI application.
+    Initializes and closes the Spotify HTTP client.
+    """
+    spotify_api_service.init_spotify_client()
+    logger.info("Spotify HTTP client initialized.") 
+    yield
+    await spotify_api_service.close_spotify_client()
+    logger.info("Spotify HTTP client closed.") 
+
+app = FastAPI(title="Spoti-Insights API", lifespan=lifespan)
 
 configure_middleware(app)
 
 app.include_router(auth.router)
 app.include_router(user.router)
+app.include_router(analytics.router)
 
 @app.get("/")
 def root():
     return {"message": "FastAPI + PostgreSQL connection working!"}
+
+app.openapi = lambda: customize_openapi(app)

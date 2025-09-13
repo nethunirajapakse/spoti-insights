@@ -15,7 +15,8 @@ SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
 def get_authorize_url():
-    scope = "user-read-private user-read-email user-top-read user-library-read playlist-read-private playlist-read-collaborative"
+    scope = "user-read-private user-read-email user-top-read user-library-read playlist-read-private playlist-read-collaborative user-read-recently-played"
+
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
         "response_type": "code",
