@@ -131,7 +131,7 @@ async def get_user_playlists(
         ValueError: If the limit is out of the valid range.
         SpotifyAPIError: If the API call fails.
     """
-    if not (1 <= limit <= MAX_SPOTIFY_LIMIT): # Using named constant for validation
+    if not (1 <= limit <= MAX_SPOTIFY_LIMIT):
         raise ValueError(f"Limit for playlists must be between 1 and {MAX_SPOTIFY_LIMIT} (inclusive).")
 
     params = {
