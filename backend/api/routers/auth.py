@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.auth import spotify_auth
+from backend.services import spotify_auth_service
 from backend.database.connection import get_db
 from backend.services import auth_service
-from backend.schemas.user import UserResponse, SpotifyToken, RefreshTokenRequest
+from backend.api.schemas.user import UserResponse, SpotifyToken, RefreshTokenRequest
 import httpx
-from backend.exceptions import ( 
+from backend.exceptions.custom_exceptions import ( 
     AuthorizationCodeMissingError,
     SpotifyTokensError,
     SpotifyUserIDMissingError,
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.get("/spotify/login")
 async def spotify_login():
-    auth_url = spotify_auth.get_authorize_url()
+    auth_url = spotify_auth_service.get_authorize_url()
     return {"auth_url": auth_url}
 
 @router.get("/spotify/callback", response_model=UserResponse) # UserResponse now contains the JWT

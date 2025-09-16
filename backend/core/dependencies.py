@@ -2,10 +2,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from backend.database.connection import get_db
-from backend.auth.jwt_utils import decode_access_token
+from backend.core.jwt_utils import decode_access_token
 from backend.services import user_service
 from backend.models.user import User
-from backend.exceptions import UserNotFoundError
+from backend.exceptions.custom_exceptions import UserNotFoundError
 
 security_scheme = HTTPBearer(scheme_name="BearerAuth") 
 

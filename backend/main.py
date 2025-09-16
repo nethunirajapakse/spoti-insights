@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from backend.routers import auth, user, analytics
-from backend.config.middleware import configure_middleware
+from backend.api.routers import auth, user, analytics
+from backend.middleware.cors import configure_middleware
 from backend.utils.openapi import customize_openapi
 from backend.services import spotify_api_service
 import logging 
