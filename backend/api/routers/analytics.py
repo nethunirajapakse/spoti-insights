@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from backend.database.connection import get_db
 from backend.services import auth_service, spotify_api_service
-from backend.exceptions import UserNotFoundError, RefreshTokenMissingError
-from backend.dependencies import get_current_user
+from backend.exceptions.custom_exceptions import UserNotFoundError, RefreshTokenMissingError
+from backend.core.dependencies import get_current_user
 from backend.models.user import User
 from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange

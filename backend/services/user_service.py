@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from backend.models.user import User
-from backend.schemas.user import UserCreate
+from backend.api.schemas.user import UserCreate
 from datetime import datetime, timezone
 from typing import Optional
-from backend.exceptions import UserNotFoundError
+from backend.exceptions.custom_exceptions import UserNotFoundError
 
 def get_user_by_spotify_id(db: Session, spotify_id: str) -> User:
     """

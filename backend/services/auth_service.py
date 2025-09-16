@@ -1,16 +1,16 @@
 from sqlalchemy.orm import Session
-from backend.auth import spotify_auth
+from backend.services import spotify_auth_service
 from backend.services import user_service
-from backend.schemas.user import UserCreate, UserResponse
+from backend.api.schemas.user import UserCreate, UserResponse
 from typing import Dict, Any
-from backend.exceptions import (
+from backend.exceptions.custom_exceptions import (
     AuthorizationCodeMissingError,
     SpotifyTokensError,
     SpotifyUserIDMissingError,
     UserNotFoundError,
     RefreshTokenMissingError
 )
-from backend.auth.jwt_utils import create_access_token
+from backend.core.jwt_utils import create_access_token
 
 async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     """
@@ -21,14 +21,14 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
     if not code:
         raise AuthorizationCodeMissingError()
 
-    token_info: Dict[str, Any] = await spotify_auth.get_spotify_tokens(code)
+    token_info: Dict[str, Any] = await spotify_auth_service.get_spotify_tokens(code)
     access_token = token_info.get("access_token")
     refresh_token = token_info.get("refresh_token")
 
     if not access_token or not refresh_token:
         raise SpotifyTokensError()
 
-    spotify_user_profile: Dict[str, Any] = await spotify_auth.get_spotify_user_profile(access_token)
+    spotify_user_profile: Dict[str, Any] = await spotify_auth_service.get_spotify_user_profile(access_token)
     spotify_id = spotify_user_profile.get("id")
     display_name = spotify_user_profile.get("display_name")
     email = spotify_user_profile.get("email")
@@ -70,7 +70,7 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
     if not db_user.refresh_token:
         raise RefreshTokenMissingError()
 
-    new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
+    new_tokens = await spotify_auth_service.refresh_spotify_token(db_user.refresh_token)
 
     if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.refresh_token:
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
