@@ -13,7 +13,7 @@ from backend.exceptions.custom_exceptions import (
     RefreshTokenMissingError
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 
 @router.get("/spotify/login")
 async def spotify_login():

@@ -21,7 +21,7 @@ def customize_openapi(app: FastAPI):
     }
 
     for path, path_item in openapi_schema["paths"].items():
-        if not path.startswith("/auth"):
+        if not path.startswith("/public"):
             for method in ["get", "put", "post", "delete", "options", "head", "patch", "trace"]:
                 if method in path_item:
                     path_item[method].setdefault("security", []).append({"BearerAuth": []})
