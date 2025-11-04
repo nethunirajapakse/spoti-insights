@@ -18,7 +18,8 @@ def get_user_by_spotify_id(db: Session, spotify_id: str) -> User:
 def create_user(db: Session, user: UserCreate) -> User:
     db_user = User(
         spotify_id=user.spotify_id,
-        refresh_token=user.refresh_token,
+        spotify_refresh_token=user.spotify_refresh_token,
+        app_refresh_token=getattr(user, "app_refresh_token", None),
         display_name=user.display_name,
         email=user.email,
         last_login=datetime.now(timezone.utc)
@@ -31,17 +32,17 @@ def create_user(db: Session, user: UserCreate) -> User:
 def update_user_login_and_token(
     db: Session,
     spotify_id: str,
-    refresh_token: str,
+    spotify_refresh_token: str,
     display_name: Optional[str] = None,
     email: Optional[str] = None,
 ) -> User:
     """
-    Updates a user's login time, refresh token, and optionally display name/email.
+    Updates a user's login time, Spotify refresh token, and optionally display name/email.
     Raises UserNotFoundError if the user does not exist.
     """
     db_user = get_user_by_spotify_id(db, spotify_id)
 
-    db_user.refresh_token = refresh_token
+    db_user.spotify_refresh_token = spotify_refresh_token  # updated
     db_user.last_login = datetime.now(timezone.utc)
     if display_name:
         db_user.display_name = display_name
@@ -51,14 +52,14 @@ def update_user_login_and_token(
     db.refresh(db_user)
     return db_user
 
-def update_user_refresh_token(db: Session, spotify_id: str, new_refresh_token: str) -> User:
+def update_user_refresh_token(db: Session, spotify_id: str, new_spotify_refresh_token: str) -> User:
     """
-    Updates only the refresh token for a given user.
+    Updates only the Spotify refresh token for a given user.
     Raises UserNotFoundError if the user does not exist.
     """
     db_user = get_user_by_spotify_id(db, spotify_id)
 
-    db_user.refresh_token = new_refresh_token
+    db_user.spotify_refresh_token = new_spotify_refresh_token  # updated
     db.commit()
     db.refresh(db_user)
     return db_user
