@@ -47,7 +47,7 @@ async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
             spotify_id=spotify_id,
             display_name=display_name,
             email=email,
-            refresh_token=refresh_token
+            spotify_refresh_token=refresh_token
         )
         created_user = user_service.create_user(db, new_user_data)
         db_user = created_user
