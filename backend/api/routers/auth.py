@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.services import auth_service, spotify_auth_service
 from backend.database.connection import get_db
-from backend.api.schemas.user import TokenResponse
+from backend.api.schemas.user import TokenResponse, RefreshRequest
 import httpx
 from backend.exceptions.custom_exceptions import ( 
     AuthorizationCodeMissingError,
@@ -39,4 +39,15 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_jwt(request: RefreshRequest):
+    try:
+        tokens = await auth_service.refresh_access_token(request.refresh_token)
+        return TokenResponse(**tokens)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
         )
