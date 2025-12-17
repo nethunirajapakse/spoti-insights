@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from backend.services import spotify_auth_service, user_service
 from backend.api.schemas.user import UserCreate
-from backend.core.jwt_utils import create_access_token, create_refresh_token
+from backend.core.jwt_utils import create_access_token, create_refresh_token, decode_access_token
 from typing import Dict, Any
 from backend.exceptions.custom_exceptions import (
     AuthorizationCodeMissingError,
@@ -68,3 +68,11 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
 
     return new_tokens
+
+async def refresh_access_token(refresh_token: str) -> dict:
+    """
+    Validates the app refresh token and returns a new JWT access token.
+    """
+    payload = decode_access_token(refresh_token)
+    access_token = create_access_token({"sub": payload["sub"], "user_id": payload["user_id"]})
+    return {"access_token": access_token, "refresh_token": refresh_token}

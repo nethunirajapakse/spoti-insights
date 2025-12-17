@@ -38,3 +38,6 @@ class TokenResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
