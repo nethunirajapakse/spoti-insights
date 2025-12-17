@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.services import spotify_auth_service
+from backend.services import auth_service, spotify_auth_service
 from backend.database.connection import get_db
-from backend.services import auth_service
-from backend.api.schemas.user import UserResponse, SpotifyToken, RefreshTokenRequest
+from backend.api.schemas.user import TokenResponse
 import httpx
 from backend.exceptions.custom_exceptions import ( 
     AuthorizationCodeMissingError,
     SpotifyTokensError,
-    SpotifyUserIDMissingError,
-    UserNotFoundError,
-    RefreshTokenMissingError
+    SpotifyUserIDMissingError
 )
 
 router = APIRouter(prefix="/public/auth", tags=["Authentication"])
@@ -20,11 +17,14 @@ async def spotify_login():
     auth_url = spotify_auth_service.get_authorize_url()
     return {"auth_url": auth_url}
 
-@router.get("/spotify/callback", response_model=UserResponse) # UserResponse now contains the JWT
+@router.get("/spotify/callback", response_model=TokenResponse)
 async def spotify_callback(code: str, db: Session = Depends(get_db)):
     try:
-        user_response = await auth_service.handle_spotify_callback(code, db)
-        return user_response
+        access_token, refresh_token = await auth_service.handle_spotify_callback(code, db)
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token
+        )
     except (AuthorizationCodeMissingError, SpotifyTokensError, SpotifyUserIDMissingError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

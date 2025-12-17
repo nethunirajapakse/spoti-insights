@@ -31,3 +31,10 @@ class SpotifyUser(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     spotify_id: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+
+    class Config:
+        from_attributes = True
