@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
+from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from backend.services import auth_service, spotify_auth_service
 from backend.database.connection import get_db
@@ -17,37 +19,41 @@ async def spotify_login():
     auth_url = spotify_auth_service.get_authorize_url()
     return {"auth_url": auth_url}
 
-@router.get("/spotify/callback", response_model=TokenResponse)
+@router.get("/spotify/callback")
 async def spotify_callback(code: str, db: Session = Depends(get_db)):
     try:
+        # 1. Call your service to get the tokens
         access_token, refresh_token = await auth_service.handle_spotify_callback(code, db)
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token
+
+        # 2. Define where the user should go after successful login
+        frontend_dashboard_url = "http://127.0.0.1:5173/dashboard"
+        response = RedirectResponse(url=frontend_dashboard_url)
+
+        # 3. Set cookies
+        # httponly=True prevents JS from reading the cookie
+        # samesite="lax" is required for cross-site redirects
+        # secure=False for localhost, set to True in production (HTTPS)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True, 
+            max_age=3600, # 1 hour
+            samesite="lax",
+            secure=False  
         )
-    except (AuthorizationCodeMissingError, SpotifyTokensError, SpotifyUserIDMissingError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=e.response.status_code,
-            detail=f"Spotify API error: {e.response.text}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}"
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            max_age=2592000, # 30 days
+            samesite="lax",
+            secure=False
         )
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_jwt(request: RefreshRequest):
-    try:
-        tokens = await auth_service.refresh_access_token(request.refresh_token)
-        return TokenResponse(**tokens)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token"
-        )
+        return response
+
+    except Exception as e:
+        # On error, redirect back to login with an error parameter
+        return RedirectResponse(url=f"http://localhost:5173/login?error={str(e)}")
+    

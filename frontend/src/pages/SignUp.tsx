@@ -1,11 +1,11 @@
-import SignIn from "@/components/SpotifyAuthForm"; 
+import SignUpForm from "@/components/SignUpForm"; 
 
-const Login = () => {
+const SignUp = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <SignIn />
+      <SignUpForm />
     </div>
   );
 };
 
-export default Login;
+export default SignUp;

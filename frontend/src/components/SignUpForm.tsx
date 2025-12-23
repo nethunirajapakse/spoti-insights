@@ -1,7 +1,19 @@
-const LoginForm = () => {
-  const handleSpotifyLogin = () => {
-    // later this will redirect to your backend / Spotify OAuth
-    console.log("Login with Spotify");
+import api from "../api/axios";
+
+const SignUpForm = () => {
+  const handleSpotifyLogin = async () => {
+    try {
+      // Fetch the Spotify Auth URL from your backend
+      const response = await api.get("/public/auth/spotify/login");
+      
+      if (response.data.auth_url) {
+        // Redirect the whole browser to Spotify
+        window.location.href = response.data.auth_url;
+      }
+    } catch (error) {
+      console.error("Failed to initiate login:", error);
+      alert("Could not connect to Spotify. Please try again.");
+    }
   };
 
   return (
@@ -50,4 +62,4 @@ const LoginForm = () => {
   );
 };
 
-export default LoginForm;
+export default SignUpForm;
