@@ -4,6 +4,8 @@ from backend.api.schemas.user import UserResponse
 from backend.database.connection import get_db
 from backend.models.user import User
 from backend.core.dependencies import get_current_user
+from backend.services import user_service
+from backend.exceptions.custom_exceptions import UserNotFoundError
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
