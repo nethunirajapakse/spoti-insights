@@ -1,16 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from backend.services import auth_service, spotify_auth_service
 from backend.database.connection import get_db
-from backend.api.schemas.user import TokenResponse, RefreshRequest
-import httpx
-from backend.exceptions.custom_exceptions import ( 
-    AuthorizationCodeMissingError,
-    SpotifyTokensError,
-    SpotifyUserIDMissingError
-)
 
 router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 
