@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from backend.services import spotify_auth_service, user_service
-from backend.api.schemas.user import UserCreate
+from backend.schemas.user import UserCreate
 from backend.core.jwt_utils import create_access_token, create_refresh_token, decode_access_token
 from typing import Dict, Any
 from backend.exceptions.custom_exceptions import (
@@ -53,20 +53,19 @@ async def handle_spotify_callback(code: str, db: Session):
     return jwt_token, app_refresh_token
 
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
-    """
-    Refreshes the Spotify access token for a given user.
-    Raises UserNotFoundError or RefreshTokenMissingError on failure.
-    """
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
-
+    
     if not db_user.spotify_refresh_token:
         raise RefreshTokenMissingError()
-
-    new_tokens = await spotify_auth_service.refresh_spotify_token(db_user.spotify_refresh_token)
-
-    if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.spotify_refresh_token:
-        user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
-
+    
+    decrypted_token = user_service.get_decrypted_refresh_token(db_user)
+    new_tokens = await spotify_auth_service.refresh_spotify_token(decrypted_token)
+    
+    if "refresh_token" in new_tokens:
+        user_service.update_user_refresh_token(
+            db, spotify_id, new_tokens["refresh_token"]
+        )
+    
     return new_tokens
 
 async def refresh_access_token(refresh_token: str) -> dict:

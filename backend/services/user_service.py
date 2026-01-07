@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from backend.models.user import User
-from backend.api.schemas.user import UserCreate
+from backend.schemas.user import UserCreate
 from datetime import datetime, timezone
 from typing import Optional
 from backend.exceptions.custom_exceptions import UserNotFoundError
+from backend.services.encryption_service import encrypt_token, decrypt_token
 
 def get_user_by_spotify_id(db: Session, spotify_id: str) -> User:
     """
@@ -16,11 +17,11 @@ def get_user_by_spotify_id(db: Session, spotify_id: str) -> User:
     return user
 
 def create_user(db: Session, user: UserCreate) -> User:
+    encrypted_refresh_token = encrypt_token(user.spotify_refresh_token)
+    
     db_user = User(
         spotify_id=user.spotify_id,
-        spotify_refresh_token=user.spotify_refresh_token,
-        app_refresh_token=getattr(user, "app_refresh_token", None),
-        display_name=user.display_name,
+        spotify_refresh_token=encrypted_refresh_token,
         email=user.email,
         last_login=datetime.now(timezone.utc)
     )
@@ -52,14 +53,13 @@ def update_user_login_and_token(
     db.refresh(db_user)
     return db_user
 
-def update_user_refresh_token(db: Session, spotify_id: str, new_spotify_refresh_token: str) -> User:
-    """
-    Updates only the Spotify refresh token for a given user.
-    Raises UserNotFoundError if the user does not exist.
-    """
+def update_user_refresh_token(db: Session, spotify_id: str, new_token: str) -> User:
     db_user = get_user_by_spotify_id(db, spotify_id)
-
-    db_user.spotify_refresh_token = new_spotify_refresh_token  # updated
+    db_user.spotify_refresh_token = encrypt_token(new_token)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def get_decrypted_refresh_token(db_user: User) -> str:
+    """Helper to decrypt the refresh token when needed."""
+    return decrypt_token(db_user.spotify_refresh_token)
