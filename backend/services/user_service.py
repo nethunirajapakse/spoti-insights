@@ -43,7 +43,7 @@ def update_user_login_and_token(
     """
     db_user = get_user_by_spotify_id(db, spotify_id)
 
-    db_user.spotify_refresh_token = spotify_refresh_token  # updated
+    db_user.spotify_refresh_token = encrypt_token(spotify_refresh_token)
     db_user.last_login = datetime.now(timezone.utc)
     if display_name:
         db_user.display_name = display_name
