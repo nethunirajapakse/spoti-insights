@@ -10,8 +10,16 @@ from backend.exceptions.custom_exceptions import (
     UserNotFoundError,
     RefreshTokenMissingError
 )
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 async def handle_spotify_callback(code: str, db: Session):
+    """
+    Handle Spotify OAuth callback and create/update user.
+    Returns JWT access token and refresh token.
+    """
     if not code:
         raise AuthorizationCodeMissingError()
 
@@ -53,6 +61,10 @@ async def handle_spotify_callback(code: str, db: Session):
     return jwt_token, app_refresh_token
 
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
+    """
+    Refresh Spotify access token using stored refresh token.
+    This is used when making Spotify API calls, not for our JWT tokens.
+    """
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
     
     if not db_user.spotify_refresh_token:
@@ -70,8 +82,25 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
 
 async def refresh_access_token(refresh_token: str) -> dict:
     """
-    Validates the app refresh token and returns a new JWT access token.
+    Validates our application's refresh token and returns a new JWT access token.
+    This is for refreshing the user's session in our app.
     """
-    payload = decode_access_token(refresh_token)
-    access_token = create_access_token({"sub": payload["sub"], "user_id": payload["user_id"]})
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    try:
+        payload = decode_access_token(refresh_token)
+        spotify_id = payload.get("sub")
+        user_id = payload.get("user_id")
+
+        if not spotify_id or not user_id:
+            raise ValueError("Invalid token payload")
+        
+        access_token = create_access_token({
+            "sub": spotify_id, 
+            "user_id": user_id
+        })
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        }
+    except Exception as e:
+        logger.error(f"Failed to refresh access token: {str(e)}")
+        raise Exception(f"Token refresh failed: {str(e)}")
