@@ -11,11 +11,10 @@ def customize_openapi(app: FastAPI):
     if app.openapi_schema:
         return app.openapi_schema
 
-    # Generate OpenAPI schema using app's own metadata
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
-        description=app.description,  # Use description from FastAPI initialization
+        description=app.description,
         routes=app.routes,
         tags=app.openapi_tags,
     )
@@ -25,7 +24,6 @@ def customize_openapi(app: FastAPI):
     openapi_schema["components"].setdefault("securitySchemes", {})
     
     # Bearer token authentication (JWT)
-    # Note: Cookie auth also uses the same JWT, but Swagger UI works best with Bearer
     openapi_schema["components"]["securitySchemes"]["BearerAuth"] = {
         "type": "http",
         "scheme": "bearer",
@@ -39,7 +37,6 @@ def customize_openapi(app: FastAPI):
         if not path.startswith("/public") and not path.startswith("/health") and path != "/":
             for method in ["get", "put", "post", "delete", "options", "head", "patch", "trace"]:
                 if method in path_item:
-                    # Apply Bearer auth requirement
                     path_item[method].setdefault("security", []).append({"BearerAuth": []})
 
     # Cache the schema
