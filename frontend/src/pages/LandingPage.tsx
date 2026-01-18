@@ -2,7 +2,7 @@ import spotiInsightsLogo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 
-const Home = () => {
+const LandingPage = () => {
   const navigate = useNavigate();
 
   const handleLoginClick = () => {
@@ -32,4 +32,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default LandingPage;
