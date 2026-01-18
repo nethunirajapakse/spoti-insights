@@ -19,7 +19,7 @@ SQLALCHEMY_ECHO = str2bool(os.getenv("SQLALCHEMY_ECHO", "False"))
 POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
 MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
 POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
-POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))  # 1 hour
+POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))
 
 engine = create_engine(
     DATABASE_URL,

@@ -18,7 +18,7 @@ from backend.middleware.error_handler import (
     generic_error_handler
 )
 from backend.exceptions.custom_exceptions import SpotifyAuthError, UserNotFoundError
-from backend.core.config import settings
+from backend.core.config import settings, OPENAPI_TAGS, SWAGGER_UI_PARAMETERS
 from backend.core.rate_limiter import limiter, rate_limit_handler
 from backend.services import spotify_api_service
 from backend.utils.openapi import customize_openapi
@@ -53,12 +53,20 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Application factory pattern for creating FastAPI instance."""
     
-    # Initialize FastAPI app with exception handlers
+    # Initialize FastAPI app with OpenAPI documentation and exception handlers
     app = FastAPI(
         title=settings.app_name,
+        description=settings.app_description,
         version=settings.app_version,
         debug=settings.debug,
         lifespan=lifespan,
+        # OpenAPI/Swagger configuration
+        docs_url=settings.docs_url,
+        redoc_url=settings.redoc_url,
+        openapi_url=settings.openapi_url,
+        openapi_tags=OPENAPI_TAGS,
+        swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
+        # Exception handlers
         exception_handlers={
             RateLimitExceeded: rate_limit_handler,
             SpotifyAuthError: spotify_auth_error_handler,
@@ -82,7 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(user.router)
     app.include_router(analytics.router)
     
-    # Customize OpenAPI schema
+    # Customize OpenAPI schema (adds security schemes and Authorize button)
     app.openapi = lambda: customize_openapi(app)
     
     return app
@@ -92,19 +100,30 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-@app.get("/", tags=["Health"])
+@app.get(
+    "/",
+    tags=["Health"],
+    summary="Root Health Check",
+    description="Simple endpoint to verify the API is running and accessible"
+)
 def root():
-    """Health check endpoint."""
+    """Root Health Check - Returns basic API information"""
     return {
         "message": "FastAPI + PostgreSQL connection working!",
         "environment": settings.environment,
-        "version": settings.app_version
+        "version": settings.app_version,
+        "docs": settings.docs_url
     }
 
 
-@app.get("/health", tags=["Health"])
+@app.get(
+    "/health",
+    tags=["Health"],
+    summary="Detailed Health Check",
+    description="Returns comprehensive health status of the API and its services"
+)
 def health_check():
-    """Detailed health check endpoint."""
+    """Detailed Health Check - Returns service status and version info"""
     return {
         "status": "healthy",
         "environment": settings.environment,
