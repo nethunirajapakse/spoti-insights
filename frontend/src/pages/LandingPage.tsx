@@ -1,7 +1,8 @@
 import spotiInsightsLogo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
+import Button from "@/components/ui/Button";
 
-const Home = () => {
+const LandingPage = () => {
   const navigate = useNavigate();
 
   const handleLoginClick = () => {
@@ -17,16 +18,18 @@ const Home = () => {
           alt="Spoti Insights logo"
         />
       </div>
-      <h1 className="text-8xl font-bold text-gray-800 mb-6">Spoti Insights</h1>
 
-      <button
+      <h1 className="text-8xl font-bold text-gray-800 mb-6">
+        Spoti Insights
+      </h1>
+
+      <Button
+        label="Login"
         onClick={handleLoginClick}
-        className="mt-6 px-8 py-3 rounded-xl bg-blue-600 text-white text-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md"
-      >
-        Login
-      </button>
+        className="mt-6 px-8 py-3 text-lg rounded-xl"
+      />
     </div>
   );
 };
 
-export default Home;
+export default LandingPage;
