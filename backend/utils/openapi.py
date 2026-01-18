@@ -5,7 +5,7 @@ def customize_openapi(app: FastAPI):
     """
     Customizes the OpenAPI schema.
     - Preserves title, version, description from FastAPI initialization
-    - Adds security schemes (Bearer token + Cookie auth)
+    - Adds security scheme (Bearer token authentication)
     - Automatically applies security to non-public endpoints
     """
     if app.openapi_schema:
