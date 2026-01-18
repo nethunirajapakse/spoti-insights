@@ -6,10 +6,40 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     # App configuration
-    app_name: str = Field(default="Spoti-Insights API", alias="APP_NAME")
+    app_name: str = Field(default="Spotify Analytics API", alias="APP_NAME")
     app_version: str = Field(default="1.0.0", alias="APP_VERSION")
+    app_description: str = Field(
+        default="""
+#### Provides authentication and analytics for Spotify users.
+
+### Features
+* **Authentication**: OAuth2 flow with Spotify
+* **User Management**: Get user profiles and data  
+* **Analytics**: Access top tracks, artists, playlists, and listening history
+
+### Authentication
+Most endpoints require authentication. Include your access token via:
+- **Cookie**: `access_token` (automatically sent by browsers)
+- **Header**: `Authorization: Bearer <your_token>` (for API clients)
+
+### Getting Started
+1. Use `/public/auth/spotify/login` to initiate OAuth flow
+2. After successful authentication, you'll receive access and refresh tokens
+3. Use the access token for authenticated endpoints
+4. Refresh your token using `/public/auth/refresh` when it expires
+
+### Rate Limiting
+All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
+        """,
+        alias="APP_DESCRIPTION"
+    )
     environment: str = Field(default="development", alias="ENVIRONMENT")
     debug: bool = Field(default=True, alias="DEBUG")
+    
+    # OpenAPI/Swagger configuration
+    docs_url: str = Field(default="/api/docs", alias="DOCS_URL")
+    redoc_url: str = Field(default="/api/redoc", alias="REDOC_URL")
+    openapi_url: str = Field(default="/api/openapi.json", alias="OPENAPI_URL")
     
     # Security
     secret_key: str = Field(..., alias="SECRET_KEY")  # Required
@@ -52,6 +82,11 @@ class Settings(BaseSettings):
         """Set log level based on environment."""
         return "INFO" if self.is_production else "DEBUG"
     
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Get list of allowed CORS origins."""
+        return [self.frontend_url]
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -62,3 +97,34 @@ class Settings(BaseSettings):
 
 # Create a singleton instance
 settings = Settings()
+
+
+# OpenAPI Tag Metadata
+OPENAPI_TAGS = [
+    {
+        "name": "Health",
+        "description": "Health check and status endpoints to verify API availability"
+    },
+    {
+        "name": "Authentication",
+        "description": "OAuth2 authentication with Spotify, token management, and user session handling"
+    },
+    {
+        "name": "Users",
+        "description": "User profile management and retrieval operations"
+    },
+    {
+        "name": "Analytics",
+        "description": "Spotify listening analytics including top tracks, artists, playlists, and listening history"
+    },
+]
+
+# Swagger UI Configuration
+SWAGGER_UI_PARAMETERS = {
+    "deepLinking": True,
+    "displayRequestDuration": True,
+    "filter": True,
+    "showExtensions": True,
+    "showCommonExtensions": True,
+    "persistAuthorization": True,
+}
