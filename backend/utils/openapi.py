@@ -34,7 +34,7 @@ def customize_openapi(app: FastAPI):
     # Apply security to non-public endpoints automatically
     for path, path_item in openapi_schema["paths"].items():
         # Skip public endpoints (don't require auth)
-        if not path.startswith("/public") and not path.startswith("/health") and path != "/":
+        if not path.startswith("/public") and path not in ("/", "/health"):
             for method in ["get", "put", "post", "delete", "options", "head", "patch", "trace"]:
                 if method in path_item:
                     path_item[method].setdefault("security", []).append({"BearerAuth": []})
