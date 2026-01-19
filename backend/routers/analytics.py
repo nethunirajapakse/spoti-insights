@@ -9,56 +9,45 @@ from backend.services.token_cache import get_token_cache
 from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
 from backend.services.spotify_api_service import DEFAULT_SPOTIFY_LIMIT, MAX_SPOTIFY_LIMIT
-import asyncio
 from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
-refresh_locks: Dict[str, asyncio.Lock] = {}
+from backend.database.redis import get_redis
 
 async def get_spotify_access_token_for_authenticated_user(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis = Depends(get_redis)
 ) -> str:
-    cache = get_token_cache()
     user_id = current_user.spotify_id
-    
-    # 1. Double-checked locking pattern
-    # First check: Fast path (no lock needed if token is in cache)
-    cached_token = cache.get(user_id)
-    if cached_token:
-        return cached_token
-    
-    # 2. Get or create an async lock for this specific user
-    if user_id not in refresh_locks:
-        refresh_locks[user_id] = asyncio.Lock()
-    
-    async with refresh_locks[user_id]:
-        # 3. Second check: Another request might have finished refreshing 
-        # while this request was waiting for the lock.
-        cached_token = cache.get(user_id)
-        if cached_token:
-            return cached_token
+    token_key = f"token:{user_id}"
+    lock_key = f"lock:refresh:{user_id}"
 
-        logger.info(f"Refreshing Spotify token for user {user_id}")
+    token = await redis.get(token_key)
+    if token:
+        return token
+    async with redis.lock(lock_key, timeout=10):
+        token = await redis.get(token_key)
+        if token:
+            return token
+
+        logger.info(f"Refreshing Spotify token for {user_id}")
         try:
             token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
             access_token = token_data["access_token"]
             expires_in = token_data.get("expires_in", 3600)
+
+            # 3. Store in Redis with a 1-minute safety buffer
+            # This handles the "Buffer Logic" problem automatically
+            await redis.set(token_key, access_token, ex=max(1, expires_in - 60))
             
-            cache.set(user_id, access_token, expires_in)
             return access_token
-            
-        except (UserNotFoundError, RefreshTokenMissingError):
-            raise # Re-raise known exceptions to be handled by FastAPI
         except Exception as e:
-            logger.error(f"Failed to obtain Spotify access token: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to obtain Spotify access token"
-            )
+            logger.error(f"Refresh failed: {e}")
+            raise HTTPException(status_code=401, detail="Spotify refresh failed")
 
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(
