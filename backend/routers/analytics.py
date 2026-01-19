@@ -5,7 +5,6 @@ from backend.services import auth_service, spotify_api_service
 from backend.exceptions.custom_exceptions import UserNotFoundError, RefreshTokenMissingError
 from backend.core.dependencies import get_current_user
 from backend.models.user import User
-from backend.services.token_cache import get_token_cache
 from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
 from backend.services.spotify_api_service import DEFAULT_SPOTIFY_LIMIT, MAX_SPOTIFY_LIMIT
