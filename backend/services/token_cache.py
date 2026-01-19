@@ -41,6 +41,29 @@ class TokenCache:
             return cached_data['access_token']
     
     def set(self, user_id: str, access_token: str, expires_in: int):
+        """
+        Store or update a user's access token in the cache with an adjusted expiry time.
+
+        Args:
+            user_id: The user's ID (spotify_id or internal ID).
+            access_token: The Spotify access token to cache.
+            expires_in: The token lifetime in seconds as reported by Spotify.
+
+        Buffer logic:
+            To reduce the risk of using an access token that is about to expire,
+            a safety buffer is subtracted from the provided lifetime before
+            computing the cached expiry time:
+
+            - Start with 10% of the reported lifetime (expires_in * 0.1).
+            - Clamp this requested buffer to the range [10, 300] seconds.
+            - Ensure the final buffer is never more than half of the total
+              lifetime (expires_in / 2).
+
+            The effective lifetime stored in the cache is:
+                max(1, expires_in - buffer_seconds)
+            so that the token is considered expired slightly before Spotify
+            would report it as expired, and it is never shorter than 1 second.
+        """
         with self._lock:
             # Use 10% of lifetime as buffer, but keep it between 10s and 300s
             # And ensure the buffer is never more than half the total lifetime
