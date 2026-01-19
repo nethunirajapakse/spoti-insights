@@ -6,7 +6,7 @@ from backend.services import user_service
 from backend.models.user import User
 from backend.exceptions.custom_exceptions import UserNotFoundError
 
-async def get_current_user(
+def get_current_user(
     request: Request, 
     db: Session = Depends(get_db)
 ) -> User:
