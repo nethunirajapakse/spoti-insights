@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from backend.core.config import settings
 from backend.core.dependencies import get_current_user
 from backend.models.user import User
+from backend.services.token_cache import get_token_cache
 import logging 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -126,19 +127,21 @@ async def refresh_token(
             detail="Invalid or expired refresh token"
         )
 
-
 @router.post("/logout")
 @limiter.limit("10/minute")
 async def logout(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user)  # Verify user is authenticated
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Logout user by clearing authentication cookies.
+    Logout user by clearing authentication cookies and cached tokens.
     Works for both cookie-based and header-based authentication.
     """
     try:
+        cache = get_token_cache()
+        cache.invalidate(current_user.spotify_id)
+        
         logger.info(f"User {current_user.spotify_id} logged out")
         
         # Clear cookies if they exist
@@ -169,7 +172,6 @@ async def logout(
         logger.error(f"Logout error: {str(e)}")
         # Still return success to prevent information leakage
         return {"message": "Logged out successfully"}
-
 
 @router.get("/verify")
 @limiter.limit("30/minute")
