@@ -10,7 +10,6 @@ from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
 from backend.services.spotify_api_service import DEFAULT_SPOTIFY_LIMIT, MAX_SPOTIFY_LIMIT
 import asyncio
-from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
