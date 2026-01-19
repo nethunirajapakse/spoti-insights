@@ -9,56 +9,56 @@ from backend.services.token_cache import get_token_cache
 from typing import Dict, Any
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
 from backend.services.spotify_api_service import DEFAULT_SPOTIFY_LIMIT, MAX_SPOTIFY_LIMIT
+import asyncio
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
+refresh_locks: Dict[str, asyncio.Lock] = {}
+
 async def get_spotify_access_token_for_authenticated_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> str:
-    """
-    Dependency that retrieves a valid Spotify access token for the authenticated user.
-    Uses cached token if available and valid, otherwise refreshes it.
-    """
     cache = get_token_cache()
+    user_id = current_user.spotify_id
     
-    # Try to get cached token first
-    cached_token = cache.get(current_user.spotify_id)
+    # 1. Double-checked locking pattern
+    # First check: Fast path (no lock needed if token is in cache)
+    cached_token = cache.get(user_id)
     if cached_token:
-        logger.debug(f"Using cached Spotify token for user {current_user.spotify_id}")
         return cached_token
     
-    # No valid cached token, refresh it
-    logger.info(f"Refreshing Spotify token for user {current_user.spotify_id}")
-    try:
-        # Refresh the user's Spotify access token using the stored refresh token
-        token_data = await auth_service.refresh_user_spotify_access_token(db, current_user.spotify_id)
-        access_token = token_data["access_token"]
-        expires_in = token_data.get("expires_in", 3600)  # Default to 1 hour if not provided
-        
-        # Cache the new token
-        cache.set(current_user.spotify_id, access_token, expires_in)
-        
-        return access_token
-        
-    except UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Authenticated user '{current_user.spotify_id}' not found in DB."
-        )
-    except RefreshTokenMissingError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Refresh token missing for user '{current_user.spotify_id}'. Please re-authenticate with Spotify."
-        )
-    except Exception as e:
-        logger.error(f"Failed to obtain Spotify access token: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to obtain Spotify access token: {e}"
-        )
+    # 2. Get or create an async lock for this specific user
+    if user_id not in refresh_locks:
+        refresh_locks[user_id] = asyncio.Lock()
+    
+    async with refresh_locks[user_id]:
+        # 3. Second check: Another request might have finished refreshing 
+        # while this request was waiting for the lock.
+        cached_token = cache.get(user_id)
+        if cached_token:
+            return cached_token
+
+        logger.info(f"Refreshing Spotify token for user {user_id}")
+        try:
+            token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
+            access_token = token_data["access_token"]
+            expires_in = token_data.get("expires_in", 3600)
+            
+            cache.set(user_id, access_token, expires_in)
+            return access_token
+            
+        except (UserNotFoundError, RefreshTokenMissingError):
+            raise # Re-raise known exceptions to be handled by FastAPI
+        except Exception as e:
+            logger.error(f"Failed to obtain Spotify access token: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to obtain Spotify access token"
+            )
 
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(

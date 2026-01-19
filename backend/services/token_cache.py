@@ -41,22 +41,11 @@ class TokenCache:
             return cached_data['access_token']
     
     def set(self, user_id: str, access_token: str, expires_in: int):
-        """
-        Store an access token in cache with expiry time.
-        
-        Args:
-            user_id: The user's ID (spotify_id or internal ID)
-            access_token: The Spotify access token to cache
-            expires_in: Token lifetime in seconds (typically 3600)
-        """
         with self._lock:
-            MIN_BUFFER = 60
-            MAX_BUFFER = 300
-
-            buffer_seconds = min(
-                MAX_BUFFER,
-                max(MIN_BUFFER, int(expires_in * 0.1))
-            )
+            # Use 10% of lifetime as buffer, but keep it between 10s and 300s
+            # And ensure the buffer is never more than half the total lifetime
+            requested_buffer = max(10, min(300, int(expires_in * 0.1)))
+            buffer_seconds = min(requested_buffer, expires_in // 2)
 
             effective_lifetime = max(1, expires_in - buffer_seconds)
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=effective_lifetime)
@@ -65,7 +54,7 @@ class TokenCache:
                 'access_token': access_token,
                 'expires_at': expires_at
             }
-    
+
     def invalidate(self, user_id: str):
         """
         Remove a token from cache (e.g., after logout or token revocation).
