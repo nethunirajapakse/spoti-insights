@@ -32,7 +32,7 @@ class TokenCache:
             
             cached_data = self._cache[user_id]
             
-            # Check if token has expired (with 60 second buffer)
+            # Check if token has expired based on precomputed expires_at (which includes a dynamic safety buffer from set)
             if datetime.now(timezone.utc) >= cached_data['expires_at']:
                 # Token expired, remove from cache
                 del self._cache[user_id]
