@@ -50,8 +50,16 @@ class TokenCache:
             expires_in: Token lifetime in seconds (typically 3600)
         """
         with self._lock:
-            # Subtract 60 seconds buffer to ensure we refresh before actual expiry
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+            MIN_BUFFER = 60
+            MAX_BUFFER = 300
+
+            buffer_seconds = min(
+                MAX_BUFFER,
+                max(MIN_BUFFER, int(expires_in * 0.1))
+            )
+
+            effective_lifetime = max(1, expires_in - buffer_seconds)
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=effective_lifetime)
             
             self._cache[user_id] = {
                 'access_token': access_token,
