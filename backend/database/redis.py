@@ -58,7 +58,12 @@ def _get_pool() -> redis.ConnectionPool:
             socket_keepalive=True,
             health_check_interval=settings.redis_health_check_interval
         )
-        logger.info(f"Redis connection pool initialized successfully")
+        # Mask sensitive parts of URL for logging
+        safe_url = settings.redis_url.split('@')[-1] if '@' in settings.redis_url else settings.redis_url
+        logger.info(
+            f"Redis connection pool initialized successfully "
+            f"(url=...{safe_url}, max_connections={settings.redis_max_connections})"
+        )
         return _pool
     except Exception as e:
         error = RuntimeError(f"Failed to create Redis connection pool: {str(e)}")

@@ -8,44 +8,39 @@ from unittest.mock import patch, MagicMock
 from backend.core.config import settings
 
 
-def test_module_import_without_redis_url():
+@pytest.fixture
+def clean_redis_module():
+    """Fixture to ensure clean module state for each test."""
+    # Clean up module before test
+    if 'backend.database.redis' in sys.modules:
+        del sys.modules['backend.database.redis']
+    
+    yield
+    
+    # Clean up module after test
+    if 'backend.database.redis' in sys.modules:
+        del sys.modules['backend.database.redis']
+
+
+def test_module_import_without_redis_url(clean_redis_module):
     """Test that the redis module can be imported even when Redis URL is None."""
     # This test verifies that importing the module doesn't fail at import time
     # when Redis is not configured
     
-    # Save original redis_url
-    original_url = settings.redis_url
-    
-    try:
-        # Set redis_url to None to simulate missing configuration
-        with patch.object(settings, 'redis_url', None):
-            # Force reload the module to test import behavior
-            if 'backend.database.redis' in sys.modules:
-                del sys.modules['backend.database.redis']
-            
-            # This import should succeed even with redis_url=None
-            from backend.database import redis as redis_module
-            
-            # Module should be imported successfully
-            assert redis_module is not None
-            assert hasattr(redis_module, 'get_redis')
-            assert hasattr(redis_module, 'ping_redis')
-            assert hasattr(redis_module, 'RedisTokenCache')
-            
-    finally:
-        # Restore original settings
-        settings.redis_url = original_url
-        # Force reload to restore normal state
-        if 'backend.database.redis' in sys.modules:
-            del sys.modules['backend.database.redis']
+    # Set redis_url to None to simulate missing configuration
+    with patch.object(settings, 'redis_url', None):
+        # This import should succeed even with redis_url=None
+        from backend.database import redis as redis_module
+        
+        # Module should be imported successfully
+        assert redis_module is not None
+        assert hasattr(redis_module, 'get_redis')
+        assert hasattr(redis_module, 'ping_redis')
+        assert hasattr(redis_module, 'RedisTokenCache')
 
 
-def test_get_pool_raises_error_when_redis_url_is_none():
+def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
     """Test that _get_pool raises appropriate error when Redis URL is not configured."""
-    # Force reload to ensure clean state
-    if 'backend.database.redis' in sys.modules:
-        del sys.modules['backend.database.redis']
-    
     with patch.object(settings, 'redis_url', None):
         from backend.database.redis import _get_pool
         
@@ -61,12 +56,8 @@ def test_get_pool_raises_error_when_redis_url_is_none():
         assert "REDIS_URL" in str(exc_info.value)
 
 
-def test_get_pool_caches_initialization_error():
+def test_get_pool_caches_initialization_error(clean_redis_module):
     """Test that initialization errors are cached and reraised."""
-    # Force reload to ensure clean state
-    if 'backend.database.redis' in sys.modules:
-        del sys.modules['backend.database.redis']
-    
     with patch.object(settings, 'redis_url', None):
         from backend.database.redis import _get_pool
         
@@ -87,12 +78,8 @@ def test_get_pool_caches_initialization_error():
 
 
 @pytest.mark.asyncio
-async def test_ping_redis_returns_false_when_not_configured():
+async def test_ping_redis_returns_false_when_not_configured(clean_redis_module):
     """Test that ping_redis returns False when Redis is not configured."""
-    # Force reload to ensure clean state
-    if 'backend.database.redis' in sys.modules:
-        del sys.modules['backend.database.redis']
-    
     with patch.object(settings, 'redis_url', None):
         from backend.database.redis import ping_redis
         
@@ -106,12 +93,8 @@ async def test_ping_redis_returns_false_when_not_configured():
         assert result is False
 
 
-def test_get_pool_uses_settings_for_pool_configuration():
+def test_get_pool_uses_settings_for_pool_configuration(clean_redis_module):
     """Test that _get_pool uses settings for pool configuration."""
-    # Force reload to ensure clean state
-    if 'backend.database.redis' in sys.modules:
-        del sys.modules['backend.database.redis']
-    
     test_url = "redis://test-host:6379/0"
     test_max_connections = 50
     test_timeout = 10
@@ -147,7 +130,3 @@ def test_get_pool_uses_settings_for_pool_configuration():
         assert call_args[1]['health_check_interval'] == test_health_interval
         assert call_args[1]['decode_responses'] is True
         assert call_args[1]['socket_keepalive'] is True
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
