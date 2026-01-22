@@ -22,7 +22,11 @@ async def get_redis():
     """
     FastAPI dependency for Redis connections.
     Yields a Redis client and ensures proper cleanup.
+    
+    Raises:
+        RuntimeError: If Redis is not configured or pool initialization fails
     """
+    pool = _get_pool()  # Lazy initialization
     client = redis.Redis(connection_pool=pool)
     try:
         yield client
@@ -33,17 +37,21 @@ async def ping_redis() -> bool:
     """
     Health check function to verify Redis connectivity.
     Returns True if Redis is accessible, False otherwise.
+    
+    Note: Returns False if Redis is not configured or if connection fails.
     """
-    client = redis.Redis(connection_pool=pool)
     try:
-        await client.ping()
-        logger.info("Redis connection successful")
-        return True
+        pool = _get_pool()  # Lazy initialization
+        client = redis.Redis(connection_pool=pool)
+        try:
+            await client.ping()
+            logger.info("Redis connection successful")
+            return True
+        finally:
+            await client.aclose()
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
         return False
-    finally:
-        await client.aclose()
 
 class RedisTokenCache:
     """
