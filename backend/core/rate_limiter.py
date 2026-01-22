@@ -1,8 +1,5 @@
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi import Request
-from fastapi.responses import JSONResponse
 from backend.core.config import settings
 import logging
 
@@ -44,17 +41,5 @@ except Exception as e:
         headers_enabled=True
     )
 
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Handle rate limit exceeded errors with user-friendly messages."""
-    logger.warning(f"Rate limit exceeded for: {_rate_limit_key_func(request)}")
-    return JSONResponse(
-        status_code=429,
-        content={
-            "error": "rate_limit_exceeded",
-            "message": "Too many requests. Please try again later.",
-            "detail": str(exc.detail) if hasattr(exc, 'detail') else "Rate limit exceeded"
-        }
-    )
-
-# Export limiter instance and handler
-__all__ = ["limiter", "rate_limit_handler"]
+# Export limiter instance
+__all__ = ["limiter"]
