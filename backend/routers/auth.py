@@ -23,7 +23,7 @@ router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 @limiter.limit("10/minute")
 async def spotify_login(
     request: Request,
-    response: Response
+    response: Response,
 ):
     """Initiate Spotify OAuth flow"""
     auth_url = spotify_auth_service.get_authorize_url()
@@ -174,7 +174,6 @@ async def logout(
 @limiter.limit("30/minute")
 async def verify_token(
     request: Request,
-    response: Response,
     current_user: User = Depends(get_current_user),
 ):
     """

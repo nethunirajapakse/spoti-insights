@@ -4,72 +4,19 @@ Redis connection and utility module for token caching and distributed locking.
 import redis.asyncio as redis
 from backend.core.config import settings
 import logging
-from typing import Optional
+import re
 
 logger = logging.getLogger(__name__)
 
-# Global connection pool - initialized lazily
-_pool: Optional[redis.ConnectionPool] = None
-_pool_initialization_error: Optional[Exception] = None
-
-
-def _get_pool() -> redis.ConnectionPool:
-    """
-    Get or create the Redis connection pool lazily.
-    
-    This allows the application to start even if Redis is not configured,
-    and provides clear error messages when Redis operations are attempted
-    without proper configuration.
-    
-    Returns:
-        Redis connection pool instance
-        
-    Raises:
-        RuntimeError: If Redis URL is not configured
-        Exception: If pool creation fails for other reasons
-    """
-    global _pool, _pool_initialization_error
-    
-    # Return existing pool if already initialized
-    if _pool is not None:
-        return _pool
-    
-    # If previous initialization failed, raise the same error
-    if _pool_initialization_error is not None:
-        raise _pool_initialization_error
-    
-    # Check if Redis URL is configured
-    if settings.redis_url is None:
-        error = RuntimeError(
-            "Redis is not configured. Please set the REDIS_URL environment variable. "
-            "Example: REDIS_URL=redis://localhost:6379/0"
-        )
-        _pool_initialization_error = error
-        logger.error(str(error))
-        raise error
-    
-    # Try to create the connection pool
-    try:
-        _pool = redis.ConnectionPool.from_url(
-            settings.redis_url, 
-            decode_responses=True,
-            max_connections=settings.redis_max_connections,
-            socket_connect_timeout=settings.redis_socket_connect_timeout,
-            socket_keepalive=True,
-            health_check_interval=settings.redis_health_check_interval
-        )
-        # Mask sensitive parts of URL for logging
-        safe_url = settings.redis_url.split('@')[-1] if '@' in settings.redis_url else settings.redis_url
-        logger.info(
-            f"Redis connection pool initialized successfully "
-            f"(url=...{safe_url}, max_connections={settings.redis_max_connections})"
-        )
-        return _pool
-    except Exception as e:
-        error = RuntimeError(f"Failed to create Redis connection pool: {str(e)}")
-        _pool_initialization_error = error
-        logger.error(str(error))
-        raise error
+# Create connection pool
+pool = redis.ConnectionPool.from_url(
+    settings.redis_url, 
+    decode_responses=True,
+    max_connections=settings.redis_max_connections,
+    socket_connect_timeout=settings.redis_socket_connect_timeout,
+    socket_keepalive=True,
+    health_check_interval=settings.redis_health_check_interval
+)
 
 async def get_redis():
     """
@@ -120,13 +67,42 @@ class RedisTokenCache:
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
     
+    def _sanitize_user_id(self, user_id: str) -> str:
+        """
+        Sanitize user_id to prevent Redis key injection or collision.
+        
+        Only allows alphanumeric characters, hyphens, and underscores.
+        Raises ValueError if user_id contains invalid characters.
+        
+        Args:
+            user_id: User identifier to sanitize
+            
+        Returns:
+            Sanitized user_id (unchanged if already valid)
+            
+        Raises:
+            ValueError: If user_id contains invalid characters
+        """
+        if not user_id:
+            raise ValueError("user_id cannot be empty")
+        
+        # Only allow alphanumeric, hyphens, and underscores
+        if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+            raise ValueError(
+                f"user_id contains invalid characters. Only alphanumeric, hyphens, and underscores are allowed: {user_id}"
+            )
+        
+        return user_id
+    
     def _get_token_key(self, user_id: str) -> str:
         """Generate Redis key for storing token."""
-        return f"{self.TOKEN_PREFIX}{user_id}"
+        sanitized_id = self._sanitize_user_id(user_id)
+        return f"{self.TOKEN_PREFIX}{sanitized_id}"
     
     def _get_lock_key(self, user_id: str) -> str:
         """Generate Redis key for refresh lock."""
-        return f"{self.LOCK_PREFIX}{user_id}"
+        sanitized_id = self._sanitize_user_id(user_id)
+        return f"{self.LOCK_PREFIX}{sanitized_id}"
     
     async def get_token(self, user_id: str) -> str | None:
         """
