@@ -7,7 +7,6 @@ import pytest_asyncio
 import asyncio
 import redis.asyncio as redis
 from backend.database.redis import RedisTokenCache, get_redis, ping_redis
-from unittest.mock import AsyncMock, MagicMock
 import time
 import os
 
