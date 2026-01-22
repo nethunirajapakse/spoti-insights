@@ -4,24 +4,77 @@ Redis connection and utility module for token caching and distributed locking.
 import redis.asyncio as redis
 from backend.core.config import settings
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Create connection pool
-pool = redis.ConnectionPool.from_url(
-    settings.redis_url, 
-    decode_responses=True,
-    max_connections=20,
-    socket_connect_timeout=5,
-    socket_keepalive=True,
-    health_check_interval=30
-)
+# Global connection pool - initialized lazily
+_pool: Optional[redis.ConnectionPool] = None
+_pool_initialization_error: Optional[Exception] = None
+
+
+def _get_pool() -> redis.ConnectionPool:
+    """
+    Get or create the Redis connection pool lazily.
+    
+    This allows the application to start even if Redis is not configured,
+    and provides clear error messages when Redis operations are attempted
+    without proper configuration.
+    
+    Returns:
+        Redis connection pool instance
+        
+    Raises:
+        RuntimeError: If Redis URL is not configured
+        Exception: If pool creation fails for other reasons
+    """
+    global _pool, _pool_initialization_error
+    
+    # Return existing pool if already initialized
+    if _pool is not None:
+        return _pool
+    
+    # If previous initialization failed, raise the same error
+    if _pool_initialization_error is not None:
+        raise _pool_initialization_error
+    
+    # Check if Redis URL is configured
+    if settings.redis_url is None:
+        error = RuntimeError(
+            "Redis is not configured. Please set the REDIS_URL environment variable. "
+            "Example: REDIS_URL=redis://localhost:6379/0"
+        )
+        _pool_initialization_error = error
+        logger.error(str(error))
+        raise error
+    
+    # Try to create the connection pool
+    try:
+        _pool = redis.ConnectionPool.from_url(
+            settings.redis_url, 
+            decode_responses=True,
+            max_connections=settings.redis_max_connections,
+            socket_connect_timeout=settings.redis_socket_connect_timeout,
+            socket_keepalive=True,
+            health_check_interval=settings.redis_health_check_interval
+        )
+        logger.info(f"Redis connection pool initialized successfully")
+        return _pool
+    except Exception as e:
+        error = RuntimeError(f"Failed to create Redis connection pool: {str(e)}")
+        _pool_initialization_error = error
+        logger.error(str(error))
+        raise error
 
 async def get_redis():
     """
     FastAPI dependency for Redis connections.
     Yields a Redis client and ensures proper cleanup.
+    
+    Raises:
+        RuntimeError: If Redis is not configured or pool initialization fails
     """
+    pool = _get_pool()  # Lazy initialization
     client = redis.Redis(connection_pool=pool)
     try:
         yield client
@@ -32,17 +85,21 @@ async def ping_redis() -> bool:
     """
     Health check function to verify Redis connectivity.
     Returns True if Redis is accessible, False otherwise.
+    
+    Note: Returns False if Redis is not configured or if connection fails.
     """
-    client = redis.Redis(connection_pool=pool)
     try:
-        await client.ping()
-        logger.info("Redis connection successful")
-        return True
+        pool = _get_pool()  # Lazy initialization
+        client = redis.Redis(connection_pool=pool)
+        try:
+            await client.ping()
+            logger.info("Redis connection successful")
+            return True
+        finally:
+            await client.aclose()
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
         return False
-    finally:
-        await client.aclose()
 
 class RedisTokenCache:
     """
