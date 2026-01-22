@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 pool = redis.ConnectionPool.from_url(
     settings.redis_url, 
     decode_responses=True,
-    max_connections=20,
-    socket_connect_timeout=5,
+    max_connections=settings.redis_max_connections,
+    socket_connect_timeout=settings.redis_socket_connect_timeout,
     socket_keepalive=True,
-    health_check_interval=30
+    health_check_interval=settings.redis_health_check_interval
 )
 
 async def get_redis():
