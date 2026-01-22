@@ -9,9 +9,10 @@ import redis.asyncio as redis
 from backend.database.redis import RedisTokenCache, get_redis, ping_redis
 from unittest.mock import AsyncMock, MagicMock
 import time
+import os
 
 # Test configuration
-TEST_REDIS_URL = "redis://localhost:6379/1"  # Use DB 1 for testing
+TEST_REDIS_URL = os.getenv("TEST_REDIS_URL", "redis://localhost:6379/1")  # Use DB 1 for testing
 
 @pytest_asyncio.fixture
 async def redis_client():
