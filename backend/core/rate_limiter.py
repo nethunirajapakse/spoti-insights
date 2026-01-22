@@ -1,7 +1,6 @@
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from backend.core.config import settings
-import redis.asyncio as redis
 import logging
 
 logger = logging.getLogger(__name__)
