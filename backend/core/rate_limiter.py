@@ -44,7 +44,7 @@ except Exception as e:
         headers_enabled=True
     )
 
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     """Handle rate limit exceeded errors with user-friendly messages."""
     logger.warning(f"Rate limit exceeded for: {_rate_limit_key_func(request)}")
     return JSONResponse(
