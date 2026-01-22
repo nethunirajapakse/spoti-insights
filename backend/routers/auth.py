@@ -173,7 +173,6 @@ async def logout(
 @limiter.limit("30/minute")
 async def verify_token(
     request: Request,
-    response: Response,
     current_user: User = Depends(get_current_user),
 ):
     """
