@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 import asyncio
 import redis.asyncio as redis
-from backend.database.redis import RedisTokenCache, get_redis, ping_redis
+from backend.database.redis import RedisTokenCache, ping_redis
 import time
 import os
 
