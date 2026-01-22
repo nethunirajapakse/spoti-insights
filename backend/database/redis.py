@@ -4,6 +4,7 @@ Redis connection and utility module for token caching and distributed locking.
 import redis.asyncio as redis
 from backend.core.config import settings
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,42 @@ class RedisTokenCache:
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
     
+    def _sanitize_user_id(self, user_id: str) -> str:
+        """
+        Sanitize user_id to prevent Redis key injection or collision.
+        
+        Only allows alphanumeric characters, hyphens, and underscores.
+        Raises ValueError if user_id contains invalid characters.
+        
+        Args:
+            user_id: User identifier to sanitize
+            
+        Returns:
+            Sanitized user_id (unchanged if already valid)
+            
+        Raises:
+            ValueError: If user_id contains invalid characters
+        """
+        if not user_id:
+            raise ValueError("user_id cannot be empty")
+        
+        # Only allow alphanumeric, hyphens, and underscores
+        if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+            raise ValueError(
+                f"user_id contains invalid characters. Only alphanumeric, hyphens, and underscores are allowed: {user_id}"
+            )
+        
+        return user_id
+    
     def _get_token_key(self, user_id: str) -> str:
         """Generate Redis key for storing token."""
-        return f"{self.TOKEN_PREFIX}{user_id}"
+        sanitized_id = self._sanitize_user_id(user_id)
+        return f"{self.TOKEN_PREFIX}{sanitized_id}"
     
     def _get_lock_key(self, user_id: str) -> str:
         """Generate Redis key for refresh lock."""
-        return f"{self.LOCK_PREFIX}{user_id}"
+        sanitized_id = self._sanitize_user_id(user_id)
+        return f"{self.LOCK_PREFIX}{sanitized_id}"
     
     async def get_token(self, user_id: str) -> str | None:
         """
