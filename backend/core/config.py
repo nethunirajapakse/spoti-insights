@@ -57,11 +57,6 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     # Redis 
     redis_url: Optional[str] = Field(default=None, alias="REDIS_URL")
 
-    # Rate limiting
-    redis_max_connections: int = Field(default=20, alias="REDIS_MAX_CONNECTIONS")
-    redis_socket_connect_timeout: int = Field(default=5, alias="REDIS_SOCKET_CONNECT_TIMEOUT")  # seconds
-    redis_health_check_interval: int = Field(default=30, alias="REDIS_HEALTH_CHECK_INTERVAL")  # seconds
-    
     # Spotify API
     spotify_client_id: Optional[str] = Field(default=None, alias="SPOTIFY_CLIENT_ID")
     spotify_client_secret: Optional[str] = Field(default=None, alias="SPOTIFY_CLIENT_SECRET")
