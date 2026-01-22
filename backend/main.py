@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
 
 from backend.routers import auth, user, analytics, health
 from backend.middleware.cors import configure_middleware
@@ -18,7 +19,7 @@ from backend.middleware.error_handler import (
 )
 from backend.exceptions.custom_exceptions import SpotifyAuthError, UserNotFoundError
 from backend.core.config import settings, OPENAPI_TAGS, SWAGGER_UI_PARAMETERS
-from backend.core.rate_limiter import limiter
+from backend.core.rate_limiter import limiter, rate_limit_handler
 from backend.services import spotify_api_service
 from backend.utils.openapi import customize_openapi
 
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
         openapi_tags=OPENAPI_TAGS,
         swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
         exception_handlers={
+            RateLimitExceeded: rate_limit_handler,
             SpotifyAuthError: spotify_auth_error_handler,
             UserNotFoundError: user_not_found_handler,
             RequestValidationError: validation_error_handler,
