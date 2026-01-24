@@ -40,6 +40,7 @@ except Exception as e:
     # Fallback to in-memory limiter if Redis is unavailable
     limiter = Limiter(
         key_func=_rate_limit_key_func,
+        storage_uri="memory://",
         enabled=True,
         headers_enabled=True
     )
