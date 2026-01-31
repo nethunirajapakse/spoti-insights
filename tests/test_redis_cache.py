@@ -308,7 +308,7 @@ class TestKeyGeneration:
     @pytest.mark.asyncio
     async def test_empty_user_id_rejected(self, token_cache):
         """Test empty user_id is rejected."""
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValueError, match="invalid user_id"):
             token_cache._get_token_key("")
     
     @pytest.mark.asyncio
