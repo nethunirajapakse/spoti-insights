@@ -33,7 +33,6 @@ async def spotify_login(
 @limiter.limit("5/minute")
 async def spotify_callback(
     request: Request,
-    response: Response,
     code: str,
     db: Session = Depends(get_db)
 ):
