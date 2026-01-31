@@ -33,7 +33,11 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
         stats = await cache.get_cache_stats()
         return {"status": "healthy", "redis": "connected", "stats": stats}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        logger.error("Redis health check failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis service unavailable"
+        )
 
 @router.get("/full")
 async def full_health_check(
