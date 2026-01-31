@@ -16,7 +16,9 @@ def _get_pool():
 
     if _pool is None:
         if not settings.redis_url:
-            _pool_initialization_error = RuntimeError("Redis is not configured.")
+            _pool_initialization_error = RuntimeError(
+                "Redis is not configured. Please set the REDIS_URL environment variable."
+            )
             raise _pool_initialization_error
         
         try:
@@ -72,7 +74,10 @@ class RedisTokenCache:
     
     def _sanitize_user_id(self, user_id: str) -> str:
         if not user_id or not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
-            raise ValueError(f"invalid user_id: {user_id}")
+            raise ValueError(
+                f"user_id cannot be empty or contain invalid characters. "
+                f"Only alphanumeric characters, hyphens, and underscores are allowed. Got: {user_id!r}"
+            )
         return user_id
     
     def _get_token_key(self, user_id: str) -> str:

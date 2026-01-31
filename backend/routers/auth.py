@@ -11,10 +11,6 @@ from backend.core.dependencies import get_current_user
 from backend.models.user import User
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/public/auth", tags=["Authentication"])

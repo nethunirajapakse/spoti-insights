@@ -52,6 +52,18 @@ async def get_spotify_access_token_for_authenticated_user(
         logger.error(f"Redis failed during lock for {user_id}, proceeding to direct refresh")
         token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
         return token_data["access_token"]
+    except UserNotFoundError as e:
+        logger.error(f"User not found during Spotify token refresh for {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e) or "User not found"
+        )
+    except RefreshTokenMissingError as e:
+        logger.error(f"Refresh token missing during Spotify token refresh for {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e) or "Refresh token missing"
+        )
     except Exception as e:
         logger.error(f"Critical refresh failure for {user_id}: {e}")
         raise HTTPException(status_code=401, detail="Failed to refresh Spotify token")

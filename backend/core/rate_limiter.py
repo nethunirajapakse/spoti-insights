@@ -28,15 +28,11 @@ def _get_redis_url() -> str:
 
 def _rate_limit_key_func(request):
     """
-    Generate rate limit key based on user identity.
-    Falls back to IP address if user is not authenticated.
+    Generate rate limit key based on client IP address.
+
+    This avoids relying on authentication middleware to populate request.state.user,
+    ensuring consistent behavior for both authenticated and unauthenticated endpoints.
     """
-    # Try to get user from request state (set by auth middleware)
-    user = getattr(request.state, "user", None)
-    if user and hasattr(user, "spotify_id"):
-        return f"user:{user.spotify_id}"
-    
-    # Fall back to IP-based rate limiting
     return get_remote_address(request)
 
 # Initialize limiter with Redis backend
