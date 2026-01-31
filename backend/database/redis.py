@@ -105,14 +105,16 @@ class RedisTokenCache:
             return False
     
     def get_refresh_lock(self, user_id: str, timeout: int | None = None):
-        """Note: Always wrap the usage of this lock in a try/except for ConnectionError."""
+        if self.redis is None:
+            raise RuntimeError("Redis client is not initialized; cannot acquire refresh lock")
+
         lock_timeout = timeout or self.DEFAULT_LOCK_TIMEOUT
         return self.redis.lock(
             self._get_lock_key(user_id),
             timeout=lock_timeout,
             blocking=True,
             blocking_timeout=lock_timeout
-        )
+    )
     
     async def get_cache_stats(self) -> dict:
         if not self.redis: return {"status": "disconnected"}
