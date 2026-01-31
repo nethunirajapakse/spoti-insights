@@ -177,14 +177,18 @@ class TestDistributedLocking:
         
         await asyncio.gather(task1, task2)
         
-        # Verify sequential execution
+        # Verify sequential execution: two acquire/release pairs
         assert len(results) == 4
-        # First task should complete before second starts
-        assert results[0].startswith("acquired")
-        assert results[1].startswith("released")
-        assert results[2].startswith("acquired")
-        assert results[3].startswith("released")
 
+        # First pair must be acquired_X then released_X with matching suffix
+        assert results[0].startswith("acquired_")
+        assert results[1].startswith("released_")
+        assert results[0].split("_", 1)[1] == results[1].split("_", 1)[1]
+
+        # Second pair must be acquired_Y then released_Y with matching suffix
+        assert results[2].startswith("acquired_")
+        assert results[3].startswith("released_")
+        assert results[2].split("_", 1)[1] == results[3].split("_", 1)[1]
 class TestCacheStatistics:
     """Test cache statistics and management."""
     
