@@ -10,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 def _get_redis_url() -> str:
     """Get Redis URL from settings for rate limiting."""
-    return settings.redis_url
+    redis_url = getattr(settings, "redis_url", None)
+    if not redis_url:
+        logger.warning("Redis URL not configured; using in-memory rate limiting backend.")
+        return "memory://"
+    return redis_url
 
 def _rate_limit_key_func(request):
     """
