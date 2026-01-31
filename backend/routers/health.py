@@ -50,17 +50,18 @@ async def full_health_check(
         health_status["status"] = "degraded"
         health_status["checks"]["database"] = "error"
     
-    # Redis Check
-    if redis_client:
-        health_status["checks"]["redis"] = "connected"
-    else:
+    # Redis Check (minimal change: real ping)
+    try:
+        if redis_client:
+            await redis_client.ping()
+            health_status["checks"]["redis"] = "connected"
+        else:
+            raise Exception("Redis client not initialized")
+    except Exception:
         health_status["status"] = "degraded"
-        health_status["checks"]["redis"] = "disconnected"
+        health_status["checks"]["redis"] = "unavailable"
     
-    if health_status["status"] != "healthy":
-        # We return 200 even if degraded so monitoring knows the API is ALIVE but limited
-        return health_status
-    
+    # We return 200 even if degraded so monitoring knows the API is ALIVE but limited
     return health_status
 
 @router.get("/database")
