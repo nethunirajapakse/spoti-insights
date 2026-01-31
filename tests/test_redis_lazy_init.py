@@ -119,6 +119,7 @@ def test_get_pool_uses_settings_for_pool_configuration(clean_redis_module):
         
         # Call _get_pool
         pool = _get_pool()
+        assert pool is mock_pool
         
         # Verify from_url was called with correct parameters
         mock_from_url.assert_called_once()
