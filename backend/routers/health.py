@@ -2,6 +2,7 @@
 Health check endpoints for monitoring application and Redis status.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+import redis
 from backend.database.redis import get_redis, RedisTokenCache
 from backend.database.connection import get_db
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ async def health_check():
     }
 
 @router.get("/redis")
-async def redis_health_check(redis_client = Depends(get_redis)):
+async def redis_health_check(redis_client: redis.Redis  = Depends(get_redis)):
     """
     Check Redis connectivity and get cache statistics.
     """
@@ -66,7 +67,7 @@ async def database_health_check(db: Session = Depends(get_db)):
 @router.get("/full")
 async def full_health_check(
     db: Session = Depends(get_db),
-    redis_client = Depends(get_redis)
+    redis_client: redis.Redis = Depends(get_redis)
 ):
     """
     Comprehensive health check for all services.

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+import redis
 from sqlalchemy.orm import Session
 from backend.database.connection import get_db
 from backend.database.redis import get_redis, RedisTokenCache
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 async def get_spotify_access_token_for_authenticated_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    redis_client = Depends(get_redis)
+    redis_client: redis.Redis = Depends(get_redis)
 ) -> str:
     """
     Dependency that retrieves or refreshes Spotify access token for authenticated user.
