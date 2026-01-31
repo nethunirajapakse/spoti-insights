@@ -16,7 +16,9 @@ def _get_pool():
 
     if _pool is None:
         if not settings.redis_url:
-            _pool_initialization_error = RuntimeError("Redis is not configured.")
+            _pool_initialization_error = RuntimeError(
+                "Redis is not configured. Please set the REDIS_URL environment variable."
+            )
             raise _pool_initialization_error
         
         try:
