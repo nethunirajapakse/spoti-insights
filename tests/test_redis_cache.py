@@ -199,7 +199,7 @@ class TestCacheStatistics:
         
         assert "cached_tokens" in stats
         assert stats["cached_tokens"] == 5
-        assert "redis_memory_used" in stats
+        assert "memory" in stats
 class TestErrorHandling:
     """Test error handling scenarios."""
     
