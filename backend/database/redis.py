@@ -1,39 +1,25 @@
-"""
-Redis connection and utility module for token caching and distributed locking.
-"""
 import redis.asyncio as redis
 from backend.core.config import settings
 import logging
 import re
+from redis.exceptions import ConnectionError, TimeoutError
 
 logger = logging.getLogger(__name__)
 
-# --- Lazy Initialization State ---
-# These variables hold the pool state so we don't connect until actually needed
 _pool = None
 _pool_initialization_error = None
 
 def _get_pool():
-    """
-    Internal helper to initialize the connection pool only when needed.
-    Caches the pool and any initialization errors to satisfy lazy-loading requirements.
-    """
     global _pool, _pool_initialization_error
-
-    # If an earlier attempt failed, re-raise the same error (caching the failure)
     if _pool_initialization_error:
         raise _pool_initialization_error
 
     if _pool is None:
-        # 1. Check if the URL is even configured
         if not settings.redis_url:
-            _pool_initialization_error = RuntimeError(
-                "Redis is not configured. Please set REDIS_URL environment variable."
-            )
+            _pool_initialization_error = RuntimeError("Redis is not configured.")
             raise _pool_initialization_error
         
         try:
-            # 2. Initialize the pool using settings from core/config.py
             _pool = redis.ConnectionPool.from_url(
                 settings.redis_url, 
                 decode_responses=True,
@@ -42,38 +28,28 @@ def _get_pool():
                 socket_keepalive=True,
                 health_check_interval=settings.redis_health_check_interval
             )
-            logger.info("Redis connection pool initialized successfully")
+            logger.info("Redis connection pool initialized")
         except Exception as e:
             logger.error(f"Failed to initialize Redis pool: {e}")
             _pool_initialization_error = e
             raise e
-            
     return _pool
 
-# --- FastAPI Dependencies & Health Checks ---
-
 async def get_redis():
-    """
-    FastAPI dependency for Redis connections.
-    Yields a Redis client and ensures proper cleanup.
-    """
+    """Yields None if Redis is unavailable to allow graceful degradation."""
     try:
         pool = _get_pool()
         client = redis.Redis(connection_pool=pool)
+        await client.ping() # Verify connectivity
         try:
             yield client
         finally:
-            # Cleanly close the specific client connection
             await client.aclose()
     except Exception as e:
-        logger.error(f"Redis dependency error: {e}")
-        raise
+        logger.warning(f"Redis unavailable, yielding None for fallback: {e}")
+        yield None
 
 async def ping_redis() -> bool:
-    """
-    Health check function to verify Redis connectivity.
-    Returns False instead of raising an exception if Redis is unavailable.
-    """
     try:
         pool = _get_pool()
         client = redis.Redis(connection_pool=pool)
@@ -82,32 +58,21 @@ async def ping_redis() -> bool:
             return True
         finally:
             await client.aclose()
-    except Exception as e:
-        logger.error(f"Redis health check failed: {e}")
+    except Exception:
         return False
 
-# --- Token Cache Implementation ---
-
 class RedisTokenCache:
-    """
-    Redis-backed token cache with distributed locking support.
-    Provides methods for token storage, retrieval, and invalidation.
-    """
-    
     TOKEN_PREFIX = "spotify:token:"
     LOCK_PREFIX = "spotify:lock:refresh:"
-    DEFAULT_LOCK_TIMEOUT = 10  # seconds
-    TOKEN_BUFFER = 60  # Safety buffer for expiry
+    DEFAULT_LOCK_TIMEOUT = 10
+    TOKEN_BUFFER = 60
     
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: redis.Redis | None):
         self.redis = redis_client
     
     def _sanitize_user_id(self, user_id: str) -> str:
-        """Only allows alphanumeric characters, hyphens, and underscores."""
-        if not user_id:
-            raise ValueError("user_id cannot be empty")
-        if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
-            raise ValueError(f"invalid characters in user_id: {user_id}")
+        if not user_id or not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+            raise ValueError(f"invalid user_id: {user_id}")
         return user_id
     
     def _get_token_key(self, user_id: str) -> str:
@@ -117,33 +82,30 @@ class RedisTokenCache:
         return f"{self.LOCK_PREFIX}{self._sanitize_user_id(user_id)}"
     
     async def get_token(self, user_id: str) -> str | None:
+        if not self.redis: return None
         try:
-            token = await self.redis.get(self._get_token_key(user_id))
-            if token:
-                logger.debug(f"Cache hit for user {user_id}")
-            return token
-        except Exception as e:
-            logger.error(f"Error retrieving token: {e}")
+            return await self.redis.get(self._get_token_key(user_id))
+        except (ConnectionError, TimeoutError):
             return None
     
     async def set_token(self, user_id: str, access_token: str, expires_in: int) -> bool:
+        if not self.redis: return False
         try:
-            # TTL: expires_in minus our safety buffer
             ttl = max(1, expires_in - self.TOKEN_BUFFER)
             await self.redis.set(self._get_token_key(user_id), access_token, ex=ttl)
             return True
-        except Exception as e:
-            logger.error(f"Error storing token: {e}")
+        except (ConnectionError, TimeoutError):
             return False
     
     async def invalidate_token(self, user_id: str) -> bool:
+        if not self.redis: return False
         try:
             return bool(await self.redis.delete(self._get_token_key(user_id)))
-        except Exception as e:
-            logger.error(f"Error invalidating token: {e}")
+        except (ConnectionError, TimeoutError):
             return False
     
     def get_refresh_lock(self, user_id: str, timeout: int | None = None):
+        """Note: Always wrap the usage of this lock in a try/except for ConnectionError."""
         lock_timeout = timeout or self.DEFAULT_LOCK_TIMEOUT
         return self.redis.lock(
             self._get_lock_key(user_id),
@@ -152,35 +114,13 @@ class RedisTokenCache:
             blocking_timeout=lock_timeout
         )
     
-    async def clear_all_tokens(self) -> int:
-        """Deletes all keys matching the token prefix."""
-        try:
-            count = 0
-            async for key in self.redis.scan_iter(f"{self.TOKEN_PREFIX}*"):
-                count += await self.redis.delete(key)
-            logger.info(f"Cleared {count} tokens from cache")
-            return count
-        except Exception as e:
-            logger.error(f"Error clearing tokens: {e}")
-            return 0
-    
     async def get_cache_stats(self) -> dict:
-        """Retrieve count of cached tokens and Redis memory usage."""
+        if not self.redis: return {"status": "disconnected"}
         try:
             token_count = 0
             async for _ in self.redis.scan_iter(f"{self.TOKEN_PREFIX}*"):
                 token_count += 1
-            
             info = await self.redis.info("memory")
-            return {
-                "cached_tokens": token_count,
-                "redis_memory_used": info.get("used_memory_human", "N/A"),
-                "redis_memory_peak": info.get("used_memory_peak_human", "N/A")
-            }
+            return {"cached_tokens": token_count, "memory": info.get("used_memory_human")}
         except Exception as e:
-            logger.error(f"Error getting stats: {e}")
             return {"error": str(e)}
-
-def get_redis_token_cache(redis_client: redis.Redis) -> RedisTokenCache:
-    """Dependency factory for RedisTokenCache."""
-    return RedisTokenCache(redis_client)

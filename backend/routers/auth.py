@@ -144,30 +144,28 @@ async def logout(
     redis_client=Depends(get_redis),
 ):
     try:
-        cache = RedisTokenCache(redis_client)
-        await cache.invalidate_token(current_user.spotify_id)
+        # Only attempt cache invalidation if Redis is available
+        if redis_client:
+            cache = RedisTokenCache(redis_client)
+            await cache.invalidate_token(current_user.spotify_id)
+            logger.info(f"User {current_user.spotify_id} logged out (Cache cleared)")
+        else:
+            logger.info(f"User {current_user.spotify_id} logged out (Cache bypass - Redis down)")
 
-        logger.info(f"User {current_user.spotify_id} logged out")
-
-        if request.cookies.get("access_token") or request.cookies.get("refresh_token"):
-            cookie_config = {
-                "httponly": True,
-                "samesite": settings.cookie_samesite,
-                "secure": settings.cookie_secure,
-                "domain": settings.cookie_domain,
-            }
-
-            response.delete_cookie("access_token", **cookie_config)
-            response.delete_cookie("refresh_token", **cookie_config)
-
-        return {
-            "message": "Logged out successfully",
-            "spotify_id": current_user.spotify_id,
-        }
-        
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
-        return {"message": "Logged out successfully"}
+        logger.error(f"Logout cache error (non-fatal): {str(e)}")
+        # We continue so cookies are still deleted
+
+    cookie_config = {
+        "httponly": True,
+        "samesite": settings.cookie_samesite,
+        "secure": settings.cookie_secure,
+        "domain": settings.cookie_domain,
+    }
+    response.delete_cookie("access_token", **cookie_config)
+    response.delete_cookie("refresh_token", **cookie_config)
+
+    return {"message": "Logged out successfully"}
 
 @router.get("/verify")
 @limiter.limit("30/minute")

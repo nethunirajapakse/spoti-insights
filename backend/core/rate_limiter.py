@@ -5,16 +5,26 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from backend.core.config import settings
 import logging
+import redis
 
 logger = logging.getLogger(__name__)
+
+MEMORY_STORAGE_URI = "memory://"
 
 def _get_redis_url() -> str:
     """Get Redis URL from settings for rate limiting."""
     redis_url = getattr(settings, "redis_url", None)
     if not redis_url:
-        logger.warning("Redis URL not configured; using in-memory rate limiting backend.")
-        return "memory://"
-    return redis_url
+        return MEMORY_STORAGE_URI
+    
+    try:
+        url = redis_url.replace("localhost", "127.0.0.1")
+        test_client = redis.from_url(url, socket_connect_timeout=1)
+        test_client.ping()
+        return url
+    except (redis.ConnectionError, redis.TimeoutError) as e:
+        logger.warning(f"Redis connection failed ({e}). Falling back to 'memory://'")
+        return MEMORY_STORAGE_URI
 
 def _rate_limit_key_func(request):
     """
@@ -36,7 +46,7 @@ try:
         storage_uri=_get_redis_url(),
         enabled=True,
         headers_enabled=True,
-        swallow_errors=True  # Don't break app if Redis is down
+        swallow_errors=True
     )
     logger.info("SlowAPI initialized with Redis backend")
 except Exception as e:
@@ -44,7 +54,7 @@ except Exception as e:
     # Fallback to in-memory limiter if Redis is unavailable
     limiter = Limiter(
         key_func=_rate_limit_key_func,
-        storage_uri="memory://",
+        storage_uri=MEMORY_STORAGE_URI,
         enabled=True,
         headers_enabled=True
     )

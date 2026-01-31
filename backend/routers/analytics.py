@@ -18,71 +18,43 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 async def get_spotify_access_token_for_authenticated_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis)
+    redis_client: redis.Redis | None = Depends(get_redis)
 ) -> str:
-    """
-    Dependency that retrieves or refreshes Spotify access token for authenticated user.
-    
-    Uses Redis for distributed caching and locking to prevent race conditions
-    across multiple workers.
-    
-    Args:
-        current_user: Authenticated user from JWT
-        db: Database session
-        redis_client: Redis client instance
-        
-    Returns:
-        Valid Spotify access token
-        
-    Raises:
-        HTTPException: If token refresh fails
-    """
     user_id = current_user.spotify_id
     cache = RedisTokenCache(redis_client)
     
-    # Try to get cached token first
+    # 1. Fallback if Redis is down initially
+    if not redis_client:
+        logger.info(f"Bypassing cache for user {user_id} (Redis Down)")
+        token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
+        return token_data["access_token"]
+
+    # 2. Try Cache
     cached_token = await cache.get_token(user_id)
     if cached_token:
-        logger.debug(f"Using cached token for user {user_id}")
         return cached_token
     
-    # Token not in cache or expired - need to refresh
-    # Use distributed lock to prevent multiple workers from refreshing simultaneously
+    # 3. Refresh with Lock (and Lock Connection Fallback)
     try:
         async with cache.get_refresh_lock(user_id):
-            # Double-check cache after acquiring lock (another worker might have refreshed)
+            # Double-check
             cached_token = await cache.get_token(user_id)
             if cached_token:
-                logger.debug(f"Token was refreshed by another worker for user {user_id}")
                 return cached_token
             
-            # Actually refresh the token
-            logger.info(f"Refreshing Spotify token for user {user_id}")
-            try:
-                token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
-                access_token = token_data["access_token"]
-                expires_in = token_data.get("expires_in", 3600)
+            token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
+            access_token = token_data["access_token"]
+            await cache.set_token(user_id, access_token, token_data.get("expires_in", 3600))
+            return access_token
                 
-                # Store in Redis with automatic expiration
-                await cache.set_token(user_id, access_token, expires_in)
-                
-                logger.info(f"Successfully refreshed and cached token for user {user_id}")
-                return access_token
-                
-            except Exception as e:
-                logger.error(f"Token refresh failed for user {user_id}: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Failed to refresh Spotify access token"
-                )
-                
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
+        # INDUSTRY PRACTICE: If lock fails due to connection, proceed without lock
+        logger.error(f"Redis failed during lock for {user_id}, proceeding to direct refresh")
+        token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
+        return token_data["access_token"]
     except Exception as e:
-        # Handle lock acquisition timeout or other Redis errors
-        logger.error(f"Error acquiring refresh lock for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Token refresh service temporarily unavailable"
-        )
+        logger.error(f"Critical refresh failure for {user_id}: {e}")
+        raise HTTPException(status_code=401, detail="Failed to refresh Spotify token")
 
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(
