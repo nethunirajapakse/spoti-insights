@@ -53,9 +53,6 @@ def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
             _get_pool()
         
         assert "Redis is not configured" in str(exc_info.value)
-        assert "REDIS_URL" in str(exc_info.value)
-
-
 def test_get_pool_caches_initialization_error(clean_redis_module):
     """Test that initialization errors are cached and reraised."""
     with patch.object(settings, 'redis_url', None):

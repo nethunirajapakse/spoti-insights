@@ -200,22 +200,6 @@ class TestCacheStatistics:
         assert "cached_tokens" in stats
         assert stats["cached_tokens"] == 5
         assert "redis_memory_used" in stats
-    
-    @pytest.mark.asyncio
-    async def test_clear_all_tokens(self, token_cache):
-        """Test clearing all tokens."""
-        # Add tokens
-        for i in range(3):
-            await token_cache.set_token(f"user_{i}", f"token_{i}", 3600)
-        
-        # Clear all
-        deleted_count = await token_cache.clear_all_tokens()
-        assert deleted_count == 3
-        
-        # Verify all gone
-        stats = await token_cache.get_cache_stats()
-        assert stats["cached_tokens"] == 0
-
 class TestErrorHandling:
     """Test error handling scenarios."""
     

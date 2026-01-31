@@ -121,6 +121,10 @@ class RedisTokenCache:
             async for _ in self.redis.scan_iter(f"{self.TOKEN_PREFIX}*"):
                 token_count += 1
             info = await self.redis.info("memory")
-            return {"cached_tokens": token_count, "memory": info.get("used_memory_human")}
+            return {
+                "status": "ok",
+                "cached_tokens": token_count,
+                "memory": info.get("used_memory_human"),
+            }
         except Exception as e:
-            return {"error": str(e)}
+            return {"status": "error", "error": str(e)}
