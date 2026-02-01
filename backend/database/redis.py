@@ -102,7 +102,6 @@ class RedisTokenCache:
         self.redis = redis_client
     
     def _sanitize_user_id(self, user_id: str) -> str:
-        # Adjusted messages to match test expectations (regex: "invalid characters", "cannot be empty")
         if not user_id:
             raise ValueError("user_id cannot be empty")
         if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
