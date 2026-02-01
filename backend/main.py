@@ -23,6 +23,21 @@ from backend.core.rate_limiter import limiter, rate_limit_handler
 from backend.services import spotify_api_service
 from backend.utils.openapi import customize_openapi
 
+class RedisOutageFilter(logging.Filter):
+    """
+    Filters out noisy Redis connection errors from SlowAPI and limits libraries
+    to keep the console clean during known outages or local development.
+    """
+    def filter(self, record: logging.LogRecord) -> bool:
+        noisy_messages = [
+            "Failed to rate limit",
+            "Error 10061 connecting",
+            "target machine actively refused it",
+            "ConnectionRefusedError"
+        ]
+        msg = record.getMessage()
+        return not any(noisy_msg in msg for noisy_msg in noisy_messages)
+
 # Configure logging based on environment
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
@@ -32,8 +47,10 @@ logging.basicConfig(
         logging.StreamHandler(),
     ],
 )
-logger = logging.getLogger(__name__)
 
+logging.getLogger("slowapi").addFilter(RedisOutageFilter())
+logging.getLogger("limits").addFilter(RedisOutageFilter())
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -85,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(user.router)
     app.include_router(analytics.router)
     app.include_router(health.router)
+    
     # Custom OpenAPI schema
     app.openapi = lambda: customize_openapi(app)
 

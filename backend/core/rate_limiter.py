@@ -4,68 +4,30 @@ from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from backend.core.config import settings
+from backend.database.redis import redis_breaker
 import logging
-import redis
 
 logger = logging.getLogger(__name__)
 
 MEMORY_STORAGE_URI = "memory://"
 
-def _get_redis_url() -> str:
-    """Get Redis URL from settings for rate limiting."""
-    redis_url = getattr(settings, "redis_url", None)
-    if not redis_url:
-        return MEMORY_STORAGE_URI
-    
-    try:
-        url = redis_url.replace("localhost", "127.0.0.1")
-        test_client = redis.from_url(url, socket_connect_timeout=1)
-        test_client.ping()
-        return url
-    except (redis.ConnectionError, redis.TimeoutError) as e:
-        logger.warning(f"Redis connection failed ({e}). Falling back to 'memory://'")
-        return MEMORY_STORAGE_URI
-
-def _rate_limit_key_func(request):
-    """
-    Generate rate limit key based on client IP address.
-
-    This avoids relying on authentication middleware to populate request.state.user,
-    ensuring consistent behavior for both authenticated and unauthenticated endpoints.
-    """
+def _rate_limit_key_func(request: Request):
+    # Kill switch for rate limiter when Redis is down
+    if not redis_breaker.is_available():
+        return None 
     return get_remote_address(request)
 
-# Initialize limiter with Redis backend
-try:
-    limiter = Limiter(
-        key_func=_rate_limit_key_func,
-        storage_uri=_get_redis_url(),
-        enabled=True,
-        headers_enabled=True,
-        swallow_errors=True
-    )
-    logger.info("SlowAPI initialized with Redis backend")
-except Exception as e:
-    logger.warning(f"Failed to initialize SlowAPI with Redis, falling back to in-memory: {e}")
-    # Fallback to in-memory limiter if Redis is unavailable
-    limiter = Limiter(
-        key_func=_rate_limit_key_func,
-        storage_uri=MEMORY_STORAGE_URI,
-        enabled=True,
-        headers_enabled=True
-    )
+limiter = Limiter(
+    key_func=_rate_limit_key_func,
+    storage_uri=settings.redis_url.replace("localhost", "127.0.0.1") if settings.redis_url else MEMORY_STORAGE_URI,
+    enabled=True,
+    headers_enabled=True,
+    swallow_errors=True
+)
 
 def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Handle rate limit exceeded errors with user-friendly messages."""
-    logger.warning(f"Rate limit exceeded for: {_rate_limit_key_func(request)}")
     return JSONResponse(
         status_code=429,
-        content={
-            "error": "rate_limit_exceeded",
-            "message": "Too many requests. Please try again later.",
-            "detail": str(exc.detail) if hasattr(exc, 'detail') else "Rate limit exceeded"
-        }
+        content={"error": "rate_limit_exceeded", "message": "Too many requests."}
     )
 
-# Export limiter instance and handler
-__all__ = ["limiter", "rate_limit_handler"]
