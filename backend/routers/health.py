@@ -32,7 +32,7 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
         cache = RedisTokenCache(redis_client)
         stats = await cache.get_cache_stats()
         return {"status": "healthy", "redis": "connected", "stats": stats}
-    except Exception as e:
+    except Exception:
         logger.error("Redis health check failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -50,7 +50,7 @@ async def full_health_check(
     try:
         db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = "connected"
-    except Exception as e:
+    except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["database"] = "error"
     
@@ -60,7 +60,7 @@ async def full_health_check(
             await redis_client.ping()
             health_status["checks"]["redis"] = "connected"
         else:
-            raise Exception("Redis client not initialized")
+            raise RuntimeError("Redis client not initialized")
     except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["redis"] = "unavailable"
