@@ -54,7 +54,7 @@ def _get_pool():
                 settings.redis_url.replace("localhost", "127.0.0.1"), 
                 decode_responses=True,
                 max_connections=getattr(settings, "redis_max_connections", 10),
-                socket_connect_timeout=getattr(settings, "redis_socket_connect_timeout", 1),
+                socket_connect_timeout=settings.redis_socket_connect_timeout,
                 socket_keepalive=True,
                 health_check_interval=getattr(settings, "redis_health_check_interval", 30)
             )
