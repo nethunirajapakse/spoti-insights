@@ -144,7 +144,7 @@ class RedisTokenCache:
         return self.redis.lock(self._get_lock_key(user_id), timeout=timeout or self.DEFAULT_LOCK_TIMEOUT, blocking=True)
 
     async def get_cache_stats(self) -> dict:
-        """Added back to satisfy TestCacheStatistics."""
+        """Return basic statistics about cached tokens and Redis memory usage."""
         if not self.redis: return {"status": "disconnected"}
         try:
             token_count = 0
