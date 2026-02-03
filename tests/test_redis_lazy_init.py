@@ -87,7 +87,6 @@ async def test_ping_redis_returns_false_when_not_configured(clean_redis_module):
         
         # Should return False, not raise an exception
         result = await redis_module.ping_redis()
- ft/optimize-token-refresh
         assert result is False
 
 
