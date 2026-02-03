@@ -6,12 +6,12 @@ import pytest
 import pytest_asyncio
 import asyncio
 import redis.asyncio as redis
-from backend.database.redis import RedisTokenCache, get_redis, ping_redis
-from unittest.mock import AsyncMock, MagicMock
+from backend.database.redis import RedisTokenCache, ping_redis
 import time
+import os
 
 # Test configuration
-TEST_REDIS_URL = "redis://localhost:6379/1"  # Use DB 1 for testing
+TEST_REDIS_URL = os.getenv("TEST_REDIS_URL", "redis://localhost:6379/1")  # Use DB 1 for testing
 
 @pytest_asyncio.fixture
 async def redis_client():
@@ -177,14 +177,18 @@ class TestDistributedLocking:
         
         await asyncio.gather(task1, task2)
         
-        # Verify sequential execution
+        # Verify sequential execution: two acquire/release pairs
         assert len(results) == 4
-        # First task should complete before second starts
-        assert results[0].startswith("acquired")
-        assert results[1].startswith("released")
-        assert results[2].startswith("acquired")
-        assert results[3].startswith("released")
 
+        # First pair must be acquired_X then released_X with matching suffix
+        assert results[0].startswith("acquired_")
+        assert results[1].startswith("released_")
+        assert results[0].split("_", 1)[1] == results[1].split("_", 1)[1]
+
+        # Second pair must be acquired_Y then released_Y with matching suffix
+        assert results[2].startswith("acquired_")
+        assert results[3].startswith("released_")
+        assert results[2].split("_", 1)[1] == results[3].split("_", 1)[1]
 class TestCacheStatistics:
     """Test cache statistics and management."""
     
@@ -199,23 +203,7 @@ class TestCacheStatistics:
         
         assert "cached_tokens" in stats
         assert stats["cached_tokens"] == 5
-        assert "redis_memory_used" in stats
-    
-    @pytest.mark.asyncio
-    async def test_clear_all_tokens(self, token_cache):
-        """Test clearing all tokens."""
-        # Add tokens
-        for i in range(3):
-            await token_cache.set_token(f"user_{i}", f"token_{i}", 3600)
-        
-        # Clear all
-        deleted_count = await token_cache.clear_all_tokens()
-        assert deleted_count == 3
-        
-        # Verify all gone
-        stats = await token_cache.get_cache_stats()
-        assert stats["cached_tokens"] == 0
-
+        assert "memory" in stats
 class TestErrorHandling:
     """Test error handling scenarios."""
     
@@ -267,6 +255,72 @@ class TestKeyGeneration:
         user_id = "test_user"
         key = token_cache._get_lock_key(user_id)
         assert key == f"spotify:lock:refresh:{user_id}"
+    
+    @pytest.mark.asyncio
+    async def test_user_id_with_hyphens(self, token_cache):
+        """Test user_id with hyphens is allowed."""
+        user_id = "test-user-123"
+        key = token_cache._get_token_key(user_id)
+        assert key == f"spotify:token:{user_id}"
+    
+    @pytest.mark.asyncio
+    async def test_user_id_with_underscores(self, token_cache):
+        """Test user_id with underscores is allowed."""
+        user_id = "test_user_123"
+        key = token_cache._get_token_key(user_id)
+        assert key == f"spotify:token:{user_id}"
+    
+    @pytest.mark.asyncio
+    async def test_user_id_alphanumeric(self, token_cache):
+        """Test purely alphanumeric user_id is allowed."""
+        user_id = "testuser123ABC"
+        key = token_cache._get_token_key(user_id)
+        assert key == f"spotify:token:{user_id}"
+    
+    @pytest.mark.asyncio
+    async def test_user_id_with_colon_rejected(self, token_cache):
+        """Test user_id with colon is rejected to prevent key collision."""
+        user_id = "test:user"
+        with pytest.raises(ValueError, match="invalid characters"):
+            token_cache._get_token_key(user_id)
+    
+    @pytest.mark.asyncio
+    async def test_user_id_with_newline_rejected(self, token_cache):
+        """Test user_id with newline is rejected."""
+        user_id = "test\nuser"
+        with pytest.raises(ValueError, match="invalid characters"):
+            token_cache._get_token_key(user_id)
+    
+    @pytest.mark.asyncio
+    async def test_user_id_with_special_chars_rejected(self, token_cache):
+        """Test user_id with special characters is rejected."""
+        invalid_ids = [
+            "test@user",
+            "test user",  # space
+            "test#user",
+            "test$user",
+            "test%user",
+            "test/user",
+            "test\\user",
+            "test;user",
+            "test|user",
+        ]
+        for user_id in invalid_ids:
+            with pytest.raises(ValueError, match="invalid characters"):
+                token_cache._get_token_key(user_id)
+    
+    @pytest.mark.asyncio
+    async def test_empty_user_id_rejected(self, token_cache):
+        """Test empty user_id is rejected."""
+        with pytest.raises(ValueError, match="user_id cannot be empty"):
+            token_cache._get_token_key("")
+    
+    @pytest.mark.asyncio
+    async def test_sanitization_in_lock_key(self, token_cache):
+        """Test that sanitization also applies to lock keys."""
+        user_id = "test:user"
+        with pytest.raises(ValueError, match="invalid characters"):
+            token_cache._get_lock_key(user_id)
 
 # Performance test (optional, can be slow)
 @pytest.mark.slow

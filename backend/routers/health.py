@@ -2,6 +2,7 @@
 Health check endpoints for monitoring application and Redis status.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+import redis
 from backend.database.redis import get_redis, RedisTokenCache
 from backend.database.connection import get_db
 from sqlalchemy.orm import Session
@@ -20,29 +21,54 @@ async def health_check():
     }
 
 @router.get("/redis")
-async def redis_health_check(redis_client = Depends(get_redis)):
-    """
-    Check Redis connectivity and get cache statistics.
-    """
-    try:
-        # Test Redis connection
-        await redis_client.ping()
-        
-        # Get cache statistics
-        cache = RedisTokenCache(redis_client)
-        stats = await cache.get_cache_stats()
-        
-        return {
-            "status": "healthy",
-            "redis": "connected",
-            "stats": stats
-        }
-    except Exception as e:
-        logger.error(f"Redis health check failed: {e}")
+async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redis)):
+    if not redis_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Redis unavailable: {str(e)}"
+            detail="Redis service unavailable (Connection Failed)"
         )
+    try:
+        await redis_client.ping()
+        cache = RedisTokenCache(redis_client)
+        stats = await cache.get_cache_stats()
+        return {"status": "healthy", "redis": "connected", "stats": stats}
+    except Exception:
+        logger.error("Redis health check failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis service unavailable"
+        )
+
+@router.get("/full")
+async def full_health_check(
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis | None = Depends(get_redis)
+):
+    health_status = {"status": "healthy", "checks": {}}
+    
+    # DB Check
+    try:
+        db.execute(text("SELECT 1"))
+        health_status["checks"]["database"] = "connected"
+    except Exception:
+        health_status["status"] = "degraded"
+        health_status["checks"]["database"] = "error"
+    
+    # Redis Check (minimal change: real ping)
+    try:
+        if redis_client:
+            await redis_client.ping()
+            health_status["checks"]["redis"] = "connected"
+        else:
+            # Redis client not available: degrade gracefully
+            health_status["status"] = "degraded"
+            health_status["checks"]["redis"] = "unavailable"
+    except Exception:
+        health_status["status"] = "degraded"
+        health_status["checks"]["redis"] = "unavailable"
+    
+    # We return 200 even if degraded so monitoring knows the API is ALIVE but limited
+    return health_status
 
 @router.get("/database")
 async def database_health_check(db: Session = Depends(get_db)):
@@ -63,46 +89,3 @@ async def database_health_check(db: Session = Depends(get_db)):
             detail=f"Database unavailable: {str(e)}"
         )
 
-@router.get("/full")
-async def full_health_check(
-    db: Session = Depends(get_db),
-    redis_client = Depends(get_redis)
-):
-    """
-    Comprehensive health check for all services.
-    """
-    health_status = {
-        "status": "healthy",
-        "checks": {}
-    }
-    
-    # Check database
-    try:
-        db.execute(text("SELECT 1"))
-        health_status["checks"]["database"] = "connected"
-    except Exception as e:
-        logger.error(f"Database check failed: {e}")
-        health_status["status"] = "degraded"
-        health_status["checks"]["database"] = f"error: {str(e)}"
-    
-    # Check Redis
-    try:
-        await redis_client.ping()
-        cache = RedisTokenCache(redis_client)
-        stats = await cache.get_cache_stats()
-        health_status["checks"]["redis"] = {
-            "status": "connected",
-            "cached_tokens": stats.get("cached_tokens", 0)
-        }
-    except Exception as e:
-        logger.error(f"Redis check failed: {e}")
-        health_status["status"] = "degraded"
-        health_status["checks"]["redis"] = f"error: {str(e)}"
-    
-    if health_status["status"] != "healthy":
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=health_status
-        )
-    
-    return health_status

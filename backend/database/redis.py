@@ -1,212 +1,159 @@
-"""
-Redis connection and utility module for token caching and distributed locking.
-"""
 import redis.asyncio as redis
 from backend.core.config import settings
 import logging
+import re
+import time
+from redis.exceptions import ConnectionError, TimeoutError
 
 logger = logging.getLogger(__name__)
 
-# Create connection pool
-pool = redis.ConnectionPool.from_url(
-    settings.redis_url, 
-    decode_responses=True,
-    max_connections=20,
-    socket_connect_timeout=5,
-    socket_keepalive=True,
-    health_check_interval=30
-)
+class RedisCircuitBreaker:
+    def __init__(self, failure_threshold=3, recovery_timeout=30):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failures = 0
+        self.last_failure_time = 0
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+
+    def is_available(self) -> bool:
+        if self.state == "OPEN":
+            if (time.time() - self.last_failure_time) > self.recovery_timeout:
+                self.state = "HALF_OPEN"
+                return True
+            return False
+        return True
+
+    def record_failure(self):
+        self.failures += 1
+        self.last_failure_time = time.time()
+        if self.failures >= self.failure_threshold:
+            self.state = "OPEN"
+            logger.error("Redis Circuit Breaker TRIP! State: OPEN")
+
+    def record_success(self):
+        self.failures = 0
+        self.state = "CLOSED"
+
+redis_breaker = RedisCircuitBreaker()
+_pool = None
+_pool_initialization_error = None
+
+def _get_pool():
+    global _pool, _pool_initialization_error
+    if _pool_initialization_error:
+        raise _pool_initialization_error
+
+    if _pool is None:
+        if not settings.redis_url:
+            _pool_initialization_error = RuntimeError("Redis is not configured. Please set the REDIS_URL environment variable.")
+            raise _pool_initialization_error
+        
+        try:
+            # Use settings values to satisfy tests
+            _pool = redis.ConnectionPool.from_url(
+                settings.redis_url.replace("localhost", "127.0.0.1"), 
+                decode_responses=True,
+                max_connections=getattr(settings, "redis_max_connections", 10),
+                socket_connect_timeout=settings.redis_socket_connect_timeout,
+                socket_keepalive=True,
+                health_check_interval=getattr(settings, "redis_health_check_interval", 30)
+            )
+            logger.info("Redis connection pool initialized")
+        except Exception as e:
+            _pool_initialization_error = e
+            raise e
+    return _pool
 
 async def get_redis():
-    """
-    FastAPI dependency for Redis connections.
-    Yields a Redis client and ensures proper cleanup.
-    """
-    client = redis.Redis(connection_pool=pool)
+    if not redis_breaker.is_available():
+        yield None
+        return
     try:
-        yield client
-    finally:
-        await client.aclose()
+        pool = _get_pool()
+        client = redis.Redis(connection_pool=pool)
+        await client.ping() 
+        redis_breaker.record_success()
+        try:
+            yield client
+        finally:
+            await client.aclose()
+    except Exception as e:
+        redis_breaker.record_failure()
+        logger.warning(f"Redis unavailable: {e}")
+        yield None
 
 async def ping_redis() -> bool:
-    """
-    Health check function to verify Redis connectivity.
-    Returns True if Redis is accessible, False otherwise.
-    """
-    client = redis.Redis(connection_pool=pool)
     try:
+        if not redis_breaker.is_available(): return False
+        pool = _get_pool()
+        client = redis.Redis(connection_pool=pool)
         await client.ping()
-        logger.info("Redis connection successful")
         return True
-    except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
+    except Exception:
         return False
-    finally:
-        await client.aclose()
 
 class RedisTokenCache:
-    """
-    Redis-backed token cache with distributed locking support.
-    Provides methods for token storage, retrieval, and invalidation.
-    """
-    
     TOKEN_PREFIX = "spotify:token:"
     LOCK_PREFIX = "spotify:lock:refresh:"
-    DEFAULT_LOCK_TIMEOUT = 10  # seconds
-    TOKEN_BUFFER = 60  # subtract 60 seconds from TTL for safety
+    DEFAULT_LOCK_TIMEOUT = 10
+    TOKEN_BUFFER = 60
     
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: redis.Redis | None):
         self.redis = redis_client
     
+    def _sanitize_user_id(self, user_id: str) -> str:
+        if not user_id:
+            raise ValueError("user_id cannot be empty")
+        if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+            raise ValueError(f"user_id contains invalid characters: {user_id!r}")
+        return user_id
+    
     def _get_token_key(self, user_id: str) -> str:
-        """Generate Redis key for storing token."""
-        return f"{self.TOKEN_PREFIX}{user_id}"
+        return f"{self.TOKEN_PREFIX}{self._sanitize_user_id(user_id)}"
     
     def _get_lock_key(self, user_id: str) -> str:
-        """Generate Redis key for refresh lock."""
-        return f"{self.LOCK_PREFIX}{user_id}"
+        return f"{self.LOCK_PREFIX}{self._sanitize_user_id(user_id)}"
     
     async def get_token(self, user_id: str) -> str | None:
-        """
-        Retrieve access token from cache.
-        
-        Args:
-            user_id: Spotify user ID
-            
-        Returns:
-            Access token if exists and not expired, None otherwise
-        """
-        token_key = self._get_token_key(user_id)
+        if not self.redis: return None
         try:
-            token = await self.redis.get(token_key)
-            if token:
-                logger.debug(f"Token cache hit for user {user_id}")
-            return token
-        except Exception as e:
-            logger.error(f"Error retrieving token from Redis: {e}")
+            return await self.redis.get(self._get_token_key(user_id))
+        except (ConnectionError, TimeoutError):
             return None
     
     async def set_token(self, user_id: str, access_token: str, expires_in: int) -> bool:
-        """
-        Store access token in cache with TTL.
-        
-        Args:
-            user_id: Spotify user ID
-            access_token: Spotify access token
-            expires_in: Token lifetime in seconds
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        token_key = self._get_token_key(user_id)
+        if not self.redis: return False
         try:
-            # Apply safety buffer to prevent using expired tokens
             ttl = max(1, expires_in - self.TOKEN_BUFFER)
-            await self.redis.set(token_key, access_token, ex=ttl)
-            logger.info(f"Cached token for user {user_id} with TTL {ttl}s")
+            await self.redis.set(self._get_token_key(user_id), access_token, ex=ttl)
             return True
-        except Exception as e:
-            logger.error(f"Error storing token in Redis: {e}")
+        except (ConnectionError, TimeoutError):
             return False
-    
+
     async def invalidate_token(self, user_id: str) -> bool:
-        """
-        Remove token from cache (used on logout).
-        
-        Args:
-            user_id: Spotify user ID
-            
-        Returns:
-            True if key was deleted, False otherwise
-        """
-        token_key = self._get_token_key(user_id)
+        if not self.redis: return False
         try:
-            deleted = await self.redis.delete(token_key)
-            if deleted:
-                logger.info(f"Invalidated token for user {user_id}")
-            return bool(deleted)
-        except Exception as e:
-            logger.error(f"Error invalidating token in Redis: {e}")
+            return bool(await self.redis.delete(self._get_token_key(user_id)))
+        except (ConnectionError, TimeoutError):
             return False
     
     def get_refresh_lock(self, user_id: str, timeout: int | None = None):
-        """
-        Create a distributed lock for token refresh operations.
-        
-        Args:
-            user_id: Spotify user ID
-            timeout: Lock timeout in seconds (default: DEFAULT_LOCK_TIMEOUT)
-            
-        Returns:
-            Redis Lock instance that can be used as async context manager
-        """
-        lock_key = self._get_lock_key(user_id)
-        lock_timeout = timeout or self.DEFAULT_LOCK_TIMEOUT
-        return self.redis.lock(
-            lock_key,
-            timeout=lock_timeout,
-            blocking=True,
-            blocking_timeout=lock_timeout
-        )
-    
-    async def clear_all_tokens(self) -> int:
-        """
-        Clear all cached tokens (useful for testing/maintenance).
-        
-        Returns:
-            Number of keys deleted
-        """
-        try:
-            pattern = f"{self.TOKEN_PREFIX}*"
-            cursor = 0
-            deleted_count = 0
-            
-            while True:
-                cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
-                if keys:
-                    deleted_count += await self.redis.delete(*keys)
-                if cursor == 0:
-                    break
-            
-            logger.info(f"Cleared {deleted_count} tokens from cache")
-            return deleted_count
-        except Exception as e:
-            logger.error(f"Error clearing tokens from Redis: {e}")
-            return 0
-    
+        if self.redis is None:
+            raise RuntimeError("Redis client is not initialized")
+        return self.redis.lock(self._get_lock_key(user_id), timeout=timeout or self.DEFAULT_LOCK_TIMEOUT, blocking=True)
+
     async def get_cache_stats(self) -> dict:
-        """
-        Get statistics about cached tokens.
-        
-        Returns:
-            Dictionary with cache statistics
-        """
+        """Return basic statistics about cached tokens and Redis memory usage."""
+        if not self.redis: return {"status": "disconnected"}
         try:
-            pattern = f"{self.TOKEN_PREFIX}*"
-            cursor = 0
             token_count = 0
-            
-            while True:
-                cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
-                token_count += len(keys)
-                if cursor == 0:
-                    break
-            
+            async for _ in self.redis.scan_iter(f"{self.TOKEN_PREFIX}*"):
+                token_count += 1
             info = await self.redis.info("memory")
-            
             return {
+                "status": "ok",
                 "cached_tokens": token_count,
-                "redis_memory_used": info.get("used_memory_human", "N/A"),
-                "redis_memory_peak": info.get("used_memory_peak_human", "N/A")
+                "memory": info.get("used_memory_human"),
             }
         except Exception as e:
-            logger.error(f"Error getting cache stats: {e}")
-            return {"error": str(e)}
-
-
-def get_redis_token_cache(redis_client: redis.Redis) -> RedisTokenCache:
-    """
-    Factory function to create RedisTokenCache instance.
-    Can be used as a FastAPI dependency.
-    """
-    return RedisTokenCache(redis_client)
+            return {"status": "error", "error": str(e)}
