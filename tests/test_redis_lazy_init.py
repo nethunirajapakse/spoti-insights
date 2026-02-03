@@ -30,13 +30,13 @@ def test_module_import_without_redis_url(clean_redis_module):
     # Set redis_url to None to simulate missing configuration
     with patch.object(settings, 'redis_url', None):
         # This import should succeed even with redis_url=None
-        from backend.database import redis as redis_module
+        from backend.database import redis
         
         # Module should be imported successfully
-        assert redis_module is not None
-        assert hasattr(redis_module, 'get_redis')
-        assert hasattr(redis_module, 'ping_redis')
-        assert hasattr(redis_module, 'RedisTokenCache')
+        assert redis is not None
+        assert hasattr(redis, 'get_redis')
+        assert hasattr(redis, 'ping_redis')
+        assert hasattr(redis, 'RedisTokenCache')
 
 
 def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
@@ -87,6 +87,7 @@ async def test_ping_redis_returns_false_when_not_configured(clean_redis_module):
         
         # Should return False, not raise an exception
         result = await redis_module.ping_redis()
+ ft/optimize-token-refresh
         assert result is False
 
 
@@ -115,6 +116,7 @@ def test_get_pool_uses_settings_for_pool_configuration(clean_redis_module):
         
         # Call _get_pool
         pool = redis_module._get_pool()
+        
         assert pool is mock_pool
         
         # Verify from_url was called with correct parameters
