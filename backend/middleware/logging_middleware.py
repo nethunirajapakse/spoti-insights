@@ -11,7 +11,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # --- SAFEGUARD: PREVENT ATTRIBUTEERROR CRASH ---
         # If Redis is down, SlowAPI might fail to attach 'view_rate_limit'.
         # We ensure it exists here so subsequent code doesn't crash.
-         # Prevent the 'AttributeError: State object has no attribute view_rate_limit'
         if not hasattr(request.state, "view_rate_limit"):
             request.state.view_rate_limit = None
         # -----------------------------------------------

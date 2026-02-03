@@ -60,7 +60,9 @@ async def full_health_check(
             await redis_client.ping()
             health_status["checks"]["redis"] = "connected"
         else:
-            raise RuntimeError("Redis client not initialized")
+            # Redis client not available: degrade gracefully
+            health_status["status"] = "degraded"
+            health_status["checks"]["redis"] = "unavailable"
     except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["redis"] = "unavailable"
