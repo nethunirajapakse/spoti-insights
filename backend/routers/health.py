@@ -23,10 +23,11 @@ async def health_check():
 @router.get("/redis")
 async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redis)):
     if not redis_client:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Redis service unavailable (Connection Failed)"
-        )
+        return {
+            "status": "degraded",
+            "redis": "unavailable",
+            "detail": "Connection Failed"
+        }
     try:
         await redis_client.ping()
         cache = RedisTokenCache(redis_client)
@@ -34,10 +35,11 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
         return {"status": "healthy", "redis": "connected", "stats": stats}
     except Exception:
         logger.error("Redis health check failed", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Redis service unavailable"
-        )
+        return {
+            "status": "degraded",
+            "redis": "unavailable",
+            "detail": "Redis ping failed"
+        }
 
 @router.get("/full")
 async def full_health_check(
