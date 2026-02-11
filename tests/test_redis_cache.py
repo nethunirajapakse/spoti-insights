@@ -189,6 +189,8 @@ class TestDistributedLocking:
         assert results[2].startswith("acquired_")
         assert results[3].startswith("released_")
         assert results[2].split("_", 1)[1] == results[3].split("_", 1)[1]
+
+
 class TestCacheStatistics:
     """Test cache statistics and management."""
     
@@ -204,6 +206,8 @@ class TestCacheStatistics:
         assert "cached_tokens" in stats
         assert stats["cached_tokens"] == 5
         assert "memory" in stats
+
+
 class TestErrorHandling:
     """Test error handling scenarios."""
     
