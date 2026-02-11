@@ -38,7 +38,7 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
         return {
             "status": "degraded",
             "redis": "unavailable",
-            "detail": "Redis ping failed"
+            "detail": "Ping Failed"
         }
 
 @router.get("/full")
