@@ -12,9 +12,17 @@ logger = logging.getLogger(__name__)
 MEMORY_STORAGE_URI = "memory://"
 
 def _rate_limit_key_func(request: Request):
-    # Kill switch for rate limiter when Redis is down
+    """
+    Key function for rate limiting.
+
+    Always returns a stable key (client IP) so that fallback storage backends,
+    such as in-memory storage, can still enforce limits even when Redis is
+    unavailable.
+    """
     if not redis_breaker.is_available():
-        return None 
+        # Redis is unavailable; rely on fallback storage (e.g., in-memory) but
+        # still use a proper key so rate limiting remains effective.
+        logger.warning("Redis unavailable for rate limiting; using fallback storage with client IP key.")
     return get_remote_address(request)
 
 limiter = Limiter(
