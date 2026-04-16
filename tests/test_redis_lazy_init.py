@@ -30,18 +30,19 @@ def test_module_import_without_redis_url(clean_redis_module):
     # Set redis_url to None to simulate missing configuration
     with patch.object(settings, 'redis_url', None):
         # This import should succeed even with redis_url=None
-        from backend.database import redis as redis_module
+        from backend.database import redis
         
         # Module should be imported successfully
-        assert redis_module is not None
-        assert hasattr(redis_module, 'get_redis')
-        assert hasattr(redis_module, 'ping_redis')
-        assert hasattr(redis_module, 'RedisTokenCache')
+        assert redis is not None
+        assert hasattr(redis, 'get_redis')
+        assert hasattr(redis, 'ping_redis')
+        assert hasattr(redis, 'RedisTokenCache')
 
 
 def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
     """Test that _get_pool raises appropriate error when Redis URL is not configured."""
     with patch.object(settings, 'redis_url', None):
+
         import backend.database.redis as redis_module
         
         # Reset pool state to force reinitialization
@@ -55,6 +56,7 @@ def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
 def test_get_pool_caches_initialization_error(clean_redis_module):
     """Test that initialization errors are cached and reraised."""
     with patch.object(settings, 'redis_url', None):
+
         import backend.database.redis as redis_module
         
         # Reset pool state
@@ -76,6 +78,7 @@ def test_get_pool_caches_initialization_error(clean_redis_module):
 async def test_ping_redis_returns_false_when_not_configured(clean_redis_module):
     """Test that ping_redis returns False when Redis is not configured."""
     with patch.object(settings, 'redis_url', None):
+      
         import backend.database.redis as redis_module
         
         # Reset pool state
@@ -105,13 +108,14 @@ def test_get_pool_uses_settings_for_pool_configuration(clean_redis_module):
         mock_from_url.return_value = mock_pool
         
         import backend.database.redis as redis_module
-        
+
         # Reset pool state
         redis_module._pool = None
         redis_module._pool_initialization_error = None
         
         # Call _get_pool
         pool = redis_module._get_pool()
+        
         assert pool is mock_pool
         
         # Verify from_url was called with correct parameters
