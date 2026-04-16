@@ -66,7 +66,10 @@ async def get_spotify_access_token_for_authenticated_user(
         )
     except Exception as e:
         logger.error(f"Critical refresh failure for {user_id}: {e}")
-        raise HTTPException(status_code=401, detail="Failed to refresh Spotify token")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to refresh Spotify token"
+        )
 
 @router.get("/top-items/{item_type}", summary="Get a user's top artists or tracks")
 async def get_user_top_items_endpoint(
