@@ -3,26 +3,31 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
-import logging
-
 from backend.core.config import settings
+from backend.database.redis import redis_breaker
+import logging
 
 logger = logging.getLogger(__name__)
 
+MEMORY_STORAGE_URI = "memory://"
+
+def _rate_limit_key_func(request: Request):
+    # Kill switch for rate limiter when Redis is down
+    if not redis_breaker.is_available():
+        return None 
+    return get_remote_address(request)
+
 limiter = Limiter(
-    key_func=get_remote_address,
-    storage_uri=settings.redis_url or "memory://",
-    default_limits=["200/hour"]
+    key_func=_rate_limit_key_func,
+    storage_uri=settings.redis_url.replace("localhost", "127.0.0.1") if settings.redis_url else MEMORY_STORAGE_URI,
+    enabled=True,
+    headers_enabled=True,
+    swallow_errors=True
 )
 
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Handle rate limit exceeded errors."""
-    logger.warning(f"Rate limit exceeded for IP: {get_remote_address(request)}")
+def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
-        content={
-            "error": "rate_limit_exceeded",
-            "message": "Too many requests. Please try again later.",
-            "detail": str(exc.detail) if hasattr(exc, 'detail') else "Rate limit exceeded"
-        }
+        content={"error": "rate_limit_exceeded", "message": "Too many requests."}
     )
+
