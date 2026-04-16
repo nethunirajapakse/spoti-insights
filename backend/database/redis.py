@@ -61,7 +61,7 @@ def _get_pool():
             logger.info("Redis connection pool initialized")
         except Exception as e:
             _pool_initialization_error = e
-            raise e
+            raise
     return _pool
 
 async def get_redis():
