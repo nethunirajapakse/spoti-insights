@@ -11,16 +11,27 @@ import time
 import os
 
 # Test configuration
-TEST_REDIS_URL = os.getenv("TEST_REDIS_URL", "redis://localhost:6379/1")  # Use DB 1 for testing
+TEST_REDIS_URL = os.getenv("TEST_REDIS_URL")
+RUN_REDIS_TESTS = os.getenv("RUN_REDIS_TESTS") == "1"
+
+pytestmark = pytest.mark.skipif(
+    not RUN_REDIS_TESTS or not TEST_REDIS_URL,
+    reason="Redis integration tests require RUN_REDIS_TESTS=1 and TEST_REDIS_URL to be set.",
+)
 
 @pytest_asyncio.fixture
 async def redis_client():
     """Fixture for Redis client."""
     client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=True)
-    yield client
-    # Cleanup: flush test database after each test
-    await client.flushdb()
-    await client.aclose()
+    existing_keys = {key async for key in client.scan_iter(match="*")}
+    try:
+        yield client
+    finally:
+        current_keys = {key async for key in client.scan_iter(match="*")}
+        keys_to_delete = list(current_keys - existing_keys)
+        if keys_to_delete:
+            await client.delete(*keys_to_delete)
+        await client.aclose()
 
 @pytest_asyncio.fixture
 async def token_cache(redis_client):
