@@ -36,4 +36,4 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # If a crash happens, we still want to see the ID in the logs
             logger.error(f"[{request_id}] Request failed with error: {str(e)}")
-            raise e
+            raise
