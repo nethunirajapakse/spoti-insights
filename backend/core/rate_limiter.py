@@ -20,14 +20,15 @@ def _rate_limit_key_func(request: Request):
     unavailable.
     """
     if not redis_breaker.is_available():
-        # Redis is unavailable; rely on fallback storage (e.g., in-memory) but
-        # still use a proper key so rate limiting remains effective.
-        logger.warning("Redis unavailable for rate limiting; using fallback storage with client IP key.")
+        # Downgraded to debug: this fires on every request during an outage
+        # and would flood logs at warning level.
+        logger.debug("Redis unavailable for rate limiting; using fallback storage with client IP key.")
     return get_remote_address(request)
 
 limiter = Limiter(
     key_func=_rate_limit_key_func,
     storage_uri=settings.redis_url.replace("localhost", "127.0.0.1") if settings.redis_url else MEMORY_STORAGE_URI,
+    default_limits=["200/hour"],
     enabled=True,
     headers_enabled=True,
     swallow_errors=True
@@ -38,4 +39,3 @@ def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         status_code=429,
         content={"error": "rate_limit_exceeded", "message": "Too many requests."}
     )
-

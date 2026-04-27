@@ -49,7 +49,6 @@ def _get_pool():
             raise _pool_initialization_error
         
         try:
-            # Use settings values to satisfy tests
             _pool = redis.ConnectionPool.from_url(
                 settings.redis_url.replace("localhost", "127.0.0.1"), 
                 decode_responses=True,
@@ -83,14 +82,19 @@ async def get_redis():
         yield None
 
 async def ping_redis() -> bool:
+    client = None
     try:
-        if not redis_breaker.is_available(): return False
+        if not redis_breaker.is_available():
+            return False
         pool = _get_pool()
         client = redis.Redis(connection_pool=pool)
         await client.ping()
         return True
     except Exception:
         return False
+    finally:
+        if client is not None:
+            await client.aclose()
 
 class RedisTokenCache:
     TOKEN_PREFIX = "spotify:token:"

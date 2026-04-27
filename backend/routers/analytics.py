@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-import redis
+import redis.asyncio as redis
 from sqlalchemy.orm import Session
 from backend.database.connection import get_db
 from backend.database.redis import get_redis, RedisTokenCache
@@ -37,7 +37,7 @@ async def get_spotify_access_token_for_authenticated_user(
     # 3. Refresh with Lock (and Lock Connection Fallback)
     try:
         async with cache.get_refresh_lock(user_id):
-            # Double-check
+            # Double-check after acquiring lock
             cached_token = await cache.get_token(user_id)
             if cached_token:
                 return cached_token
@@ -47,8 +47,8 @@ async def get_spotify_access_token_for_authenticated_user(
             await cache.set_token(user_id, access_token, token_data.get("expires_in", 3600))
             return access_token
                 
-    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
-        # INDUSTRY PRACTICE: If lock fails due to connection, proceed without lock
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+        # If lock fails due to Redis connection issue, proceed without lock
         logger.error(f"Redis failed during lock for {user_id}, proceeding to direct refresh")
         token_data = await auth_service.refresh_user_spotify_access_token(db, user_id)
         return token_data["access_token"]
@@ -171,4 +171,3 @@ async def get_user_recently_played_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"An unexpected error occurred: {str(e)}"
         )
-    

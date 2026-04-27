@@ -2,7 +2,7 @@
 Health check endpoints for monitoring application and Redis status.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-import redis
+import redis.asyncio as redis
 from backend.database.redis import get_redis, RedisTokenCache
 from backend.database.connection import get_db
 from sqlalchemy.orm import Session
@@ -56,20 +56,19 @@ async def full_health_check(
         health_status["status"] = "degraded"
         health_status["checks"]["database"] = "error"
     
-    # Redis Check (minimal change: real ping)
+    # Redis Check
     try:
         if redis_client:
             await redis_client.ping()
             health_status["checks"]["redis"] = "connected"
         else:
-            # Redis client not available: degrade gracefully
             health_status["status"] = "degraded"
             health_status["checks"]["redis"] = "unavailable"
     except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["redis"] = "unavailable"
     
-    # We return 200 even if degraded so monitoring knows the API is ALIVE but limited
+    # Return 200 even if degraded so monitoring knows the API is ALIVE but limited
     return health_status
 
 @router.get("/database")
@@ -78,7 +77,6 @@ async def database_health_check(db: Session = Depends(get_db)):
     Check database connectivity.
     """
     try:
-        # Test database connection
         db.execute(text("SELECT 1"))
         return {
             "status": "healthy",
