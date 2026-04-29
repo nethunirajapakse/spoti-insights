@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getSpotifyAuthUrl } from "@/api";
+import { getSpotifyAuthUrl } from "@/api/auth";
 import Button from "@/components/ui/Button";
 
 const SpotifyIcon = ({ className }: { className: string }) => (

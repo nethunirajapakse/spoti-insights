@@ -1,0 +1,130 @@
+"""
+Test lazy initialization of Redis connection pool.
+Run with: pytest tests/test_redis_lazy_init.py -v
+"""
+import pytest
+import sys
+from unittest.mock import patch, MagicMock
+from backend.core.config import settings
+
+
+@pytest.fixture
+def clean_redis_module():
+    """Fixture to ensure clean module state for each test."""
+    # Clean up module before test
+    if 'backend.database.redis' in sys.modules:
+        del sys.modules['backend.database.redis']
+    
+    yield
+    
+    # Clean up module after test
+    if 'backend.database.redis' in sys.modules:
+        del sys.modules['backend.database.redis']
+
+
+def test_module_import_without_redis_url(clean_redis_module):
+    """Test that the redis module can be imported even when Redis URL is None."""
+    # This test verifies that importing the module doesn't fail at import time
+    # when Redis is not configured
+    
+    # Set redis_url to None to simulate missing configuration
+    with patch.object(settings, 'redis_url', None):
+        # This import should succeed even with redis_url=None
+        from backend.database import redis
+        
+        # Module should be imported successfully
+        assert redis is not None
+        assert hasattr(redis, 'get_redis')
+        assert hasattr(redis, 'ping_redis')
+        assert hasattr(redis, 'RedisTokenCache')
+
+
+def test_get_pool_raises_error_when_redis_url_is_none(clean_redis_module):
+    """Test that _get_pool raises appropriate error when Redis URL is not configured."""
+    with patch.object(settings, 'redis_url', None):
+
+        import backend.database.redis as redis_module
+        
+        # Reset pool state to force reinitialization
+        redis_module._pool = None
+        redis_module._pool_initialization_error = None
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            redis_module._get_pool()
+        
+        assert "Redis is not configured" in str(exc_info.value)
+def test_get_pool_caches_initialization_error(clean_redis_module):
+    """Test that initialization errors are cached and reraised."""
+    with patch.object(settings, 'redis_url', None):
+
+        import backend.database.redis as redis_module
+        
+        # Reset pool state
+        redis_module._pool = None
+        redis_module._pool_initialization_error = None
+        
+        # First call should fail and cache the error
+        with pytest.raises(RuntimeError):
+            redis_module._get_pool()
+        
+        # Second call should raise the same cached error
+        with pytest.raises(RuntimeError) as exc_info:
+            redis_module._get_pool()
+        
+        assert "Redis is not configured" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_ping_redis_returns_false_when_not_configured(clean_redis_module):
+    """Test that ping_redis returns False when Redis is not configured."""
+    with patch.object(settings, 'redis_url', None):
+      
+        import backend.database.redis as redis_module
+        
+        # Reset pool state
+        redis_module._pool = None
+        redis_module._pool_initialization_error = None
+        
+        # Should return False, not raise an exception
+        result = await redis_module.ping_redis()
+        assert result is False
+
+
+def test_get_pool_uses_settings_for_pool_configuration(clean_redis_module):
+    """Test that _get_pool uses settings for pool configuration."""
+    test_url = "redis://test-host:6379/0"
+    test_max_connections = 50
+    test_timeout = 10
+    test_health_interval = 60
+    
+    with patch.object(settings, 'redis_url', test_url), \
+         patch.object(settings, 'redis_max_connections', test_max_connections), \
+         patch.object(settings, 'redis_socket_connect_timeout', test_timeout), \
+         patch.object(settings, 'redis_health_check_interval', test_health_interval), \
+         patch('backend.database.redis.redis.ConnectionPool.from_url') as mock_from_url:
+        
+        # Mock the from_url to avoid actual connection
+        mock_pool = MagicMock()
+        mock_from_url.return_value = mock_pool
+        
+        import backend.database.redis as redis_module
+
+        # Reset pool state
+        redis_module._pool = None
+        redis_module._pool_initialization_error = None
+        
+        # Call _get_pool
+        pool = redis_module._get_pool()
+        
+        assert pool is mock_pool
+        
+        # Verify from_url was called with correct parameters
+        mock_from_url.assert_called_once()
+        call_args = mock_from_url.call_args
+        
+        assert call_args[0][0] == test_url
+        assert call_args[1]['max_connections'] == test_max_connections
+        assert call_args[1]['socket_connect_timeout'] == test_timeout
+        assert call_args[1]['health_check_interval'] == test_health_interval
+        assert call_args[1]['decode_responses'] is True
+        assert call_args[1]['socket_keepalive'] is True

@@ -1,4 +1,4 @@
-import api from "./axios"; 
+import api from "@/api/axios"; 
 
 export const getSpotifyAuthUrl = async (): Promise<string> => {
   const response = await api.get("/public/auth/spotify/login");
