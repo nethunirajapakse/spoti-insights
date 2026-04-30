@@ -3,7 +3,6 @@ from typing import Dict, Any
 from enum import Enum
 import logging 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
