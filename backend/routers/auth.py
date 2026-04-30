@@ -59,7 +59,7 @@ async def spotify_callback(
 
     # ── CSRF guard ──────────────────────────────────────────────────────────
     stored_state = request.cookies.get("oauth_state")
-    if not state or not stored_state or state != stored_state:
+    if not state or not stored_state or not secrets.compare_digest(state, stored_state):
         logger.warning("OAuth state mismatch — possible CSRF attempt")
         return RedirectResponse(
             url=f"{settings.frontend_url}/login?error=state_mismatch"
