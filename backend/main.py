@@ -50,6 +50,8 @@ logging.basicConfig(
 
 logging.getLogger("slowapi").addFilter(RedisOutageFilter())
 logging.getLogger("limits").addFilter(RedisOutageFilter())
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
