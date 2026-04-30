@@ -7,7 +7,6 @@ from backend.exceptions.custom_exceptions import (
     AuthorizationCodeMissingError,
     SpotifyTokensError,
     SpotifyUserIDMissingError,
-    UserNotFoundError,
     RefreshTokenMissingError,
 )
 import logging
