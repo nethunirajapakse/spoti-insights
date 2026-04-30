@@ -43,6 +43,7 @@ async def spotify_login(request: Request):
         samesite="lax",         # lax so the cookie is sent on the redirect back
         secure=settings.cookie_secure,
         domain=settings.cookie_domain,
+        path="/",
     )
     return response
 
@@ -82,9 +83,7 @@ async def spotify_callback(
         # Clear the one-time state cookie now that it has been consumed
         redirect.delete_cookie(
             "oauth_state",
-            httponly=True,
-            samesite="lax",
-            secure=settings.cookie_secure,
+            path="/",
             domain=settings.cookie_domain,
         )
 
@@ -172,15 +171,10 @@ async def logout(
     except Exception as e:
         logger.error(f"Logout cache error (non-fatal): {str(e)}")
 
-    cookie_config = {
-        "httponly": True,
-        "samesite": settings.cookie_samesite,
-        "secure": settings.cookie_secure,
-        "domain": settings.cookie_domain,
-        "path": "/",            # must match the path used when the cookie was set
-    }
-    response.delete_cookie("access_token",  **cookie_config)
-    response.delete_cookie("refresh_token", **cookie_config)
+    # delete_cookie only reliably accepts path and domain; httponly/samesite/secure
+    # are ignored by browsers on cookie deletion and not supported by all frameworks.
+    response.delete_cookie("access_token",  path="/", domain=settings.cookie_domain)
+    response.delete_cookie("refresh_token", path="/", domain=settings.cookie_domain)
 
     return {"message": "Logged out successfully"}
 
