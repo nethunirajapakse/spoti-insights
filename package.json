@@ -2,8 +2,8 @@
   "name": "spotify-dashboard",
   "private": true,
   "scripts": {
-    "dev:frontend": "cd frontend && npm run dev",
-    "build:frontend": "cd frontend && npm run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
     "dev:backend": "uvicorn backend.main:app --reload",
     "dev": "concurrently --names \"frontend,backend\" --prefix-colors \"cyan,yellow\" \"npm run dev:frontend\" \"npm run dev:backend\""
   },
