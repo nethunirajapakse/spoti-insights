@@ -96,6 +96,7 @@ async def ping_redis() -> bool:
         if client is not None:
             await client.aclose()
 
+
 class RedisTokenCache:
     TOKEN_PREFIX = "spotify:token:"
     LOCK_PREFIX = "spotify:lock:refresh:"
@@ -169,3 +170,59 @@ class RedisTokenCache:
             return stats
         except Exception as e:
             return {"status": "error", "error": str(e)}
+
+
+class JWTDenylist:
+    """
+    Stores revoked JWT IDs (jti claims) in Redis with a TTL matching the
+    token's remaining lifetime.
+
+    Keys:   jwt:deny:{jti}
+    Value:  "1" (presence is all that matters)
+    TTL:    set to the token's remaining seconds so Redis self-cleans —
+            no background job needed.
+
+    Fail-open policy: if Redis is unavailable, is_denied() returns False
+    so a Redis outage does not lock all users out. Log the bypass so it
+    is visible in monitoring.
+    """
+
+    DENY_PREFIX = "jwt:deny:"
+
+    def __init__(self, redis_client: redis.Redis | None):
+        self.redis = redis_client
+
+    def _key(self, jti: str) -> str:
+        return f"{self.DENY_PREFIX}{jti}"
+
+    async def add(self, jti: str, ttl_seconds: int) -> bool:
+        """
+        Deny a jti for ttl_seconds.
+        ttl_seconds should be the token's remaining lifetime so the key
+        self-expires exactly when the token would have anyway.
+        Clamps to 1 second minimum so we never set a key with ex=0.
+        Returns True on success, False if Redis is unavailable.
+        """
+        if not self.redis:
+            logger.warning("JWTDenylist.add: Redis unavailable — token jti=%s not denylisted", jti)
+            return False
+        try:
+            await self.redis.set(self._key(jti), "1", ex=max(1, ttl_seconds))
+            return True
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning("JWTDenylist.add failed (Redis error): %s", e)
+            return False
+
+    async def is_denied(self, jti: str) -> bool:
+        """
+        Returns True if the jti is on the denylist.
+        Returns False (fail-open) if Redis is unavailable — logs the bypass.
+        """
+        if not self.redis:
+            logger.warning("JWTDenylist.is_denied: Redis unavailable — fail-open for jti=%s", jti)
+            return False
+        try:
+            return bool(await self.redis.exists(self._key(jti)))
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning("JWTDenylist.is_denied failed (Redis error) — fail-open: %s", e)
+            return False
