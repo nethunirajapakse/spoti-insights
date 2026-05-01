@@ -14,16 +14,28 @@ SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
-def get_authorize_url():
-    scope = "user-read-private user-read-email user-top-read user-library-read playlist-read-private playlist-read-collaborative user-read-recently-played"
 
+def get_authorize_url(state: str) -> str:       # <-- state is now a required parameter
+    """
+    Builds the Spotify authorization URL.
+    The caller is responsible for generating a cryptographically random state
+    value, storing it (e.g. in a short-lived cookie), and passing it here so
+    Spotify echoes it back in the callback for CSRF validation.
+    """
+    scope = (
+        "user-read-private user-read-email user-top-read "
+        "user-library-read playlist-read-private "
+        "playlist-read-collaborative user-read-recently-played"
+    )
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
         "response_type": "code",
         "redirect_uri": SPOTIFY_REDIRECT_URI,
         "scope": scope,
+        "state": state,                         # <-- included in redirect
     }
     return f"{SPOTIFY_AUTH_URL}?{urlencode(params)}"
+
 
 async def get_spotify_tokens(code: str) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
@@ -37,8 +49,9 @@ async def get_spotify_tokens(code: str) -> Dict[str, Any]:
                 "client_secret": SPOTIFY_CLIENT_SECRET,
             },
         )
-        response.raise_for_status() 
+        response.raise_for_status()
         return response.json()
+
 
 async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
@@ -54,13 +67,12 @@ async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
         response.raise_for_status()
         return response.json()
 
+
 async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{SPOTIFY_API_BASE_URL}/me",
-            headers={
-                "Authorization": f"Bearer {access_token}"
-            }
+            headers={"Authorization": f"Bearer {access_token}"},
         )
         response.raise_for_status()
         return response.json()
