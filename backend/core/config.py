@@ -50,6 +50,11 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     # CORS and Cookies
     frontend_url: str = Field(default="http://127.0.0.1:5173", alias="FRONTEND_URL")
     cookie_domain: Optional[str] = Field(default=None, alias="COOKIE_DOMAIN")
+
+    # Cookie Expiration Times (in seconds)
+    oauth_state_max_age: int = Field(default=300, alias="OAUTH_STATE_MAX_AGE")  # 300 seconds = 5 minutes
+    access_token_max_age: int = Field(default=3600, alias="ACCESS_TOKEN_MAX_AGE")   # 3600 seconds = 1 hour
+    refresh_token_max_age: int = Field(default=2592000, alias="REFRESH_TOKEN_MAX_AGE")  # 2592000 seconds = 30 days
     
     # Database
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")

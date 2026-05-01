@@ -17,12 +17,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 
-# How long the oauth_state cookie lives (seconds).
-# Must be long enough for the user to approve on Spotify but short enough
-# to limit the replay window.
-_STATE_COOKIE_MAX_AGE = 300
-
-
 @router.get("/spotify/login")
 @limiter.limit("10/minute")
 async def spotify_login(request: Request):
@@ -38,7 +32,7 @@ async def spotify_login(request: Request):
     response.set_cookie(
         key="oauth_state",
         value=state,
-        max_age=_STATE_COOKIE_MAX_AGE,
+        max_age=settings.oauth_state_max_age,
         httponly=True,
         samesite="lax",         # lax so the cookie is sent on the redirect back
         secure=settings.cookie_secure,
@@ -87,8 +81,19 @@ async def spotify_callback(
             domain=settings.cookie_domain,
         )
 
-        redirect.set_cookie(key="access_token",  value=access_token,  max_age=3600,     **cookie_config)
-        redirect.set_cookie(key="refresh_token", value=refresh_token, max_age=2592000,  **cookie_config)
+        # Replaced magic numbers with settings
+        redirect.set_cookie(
+            key="access_token",  
+            value=access_token,  
+            max_age=settings.access_token_max_age,  
+            **cookie_config
+        )
+        redirect.set_cookie(
+            key="refresh_token", 
+            value=refresh_token, 
+            max_age=settings.refresh_token_max_age, 
+            **cookie_config
+        )
 
         return redirect
 
@@ -130,7 +135,7 @@ async def refresh_token(
             response.set_cookie(
                 key="access_token",
                 value=new_tokens["access_token"],
-                max_age=3600,
+                max_age=settings.access_token_max_age,  # Replaced magic number
                 httponly=True,
                 samesite=settings.cookie_samesite,
                 secure=settings.cookie_secure,
