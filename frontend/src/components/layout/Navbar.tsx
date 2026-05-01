@@ -10,6 +10,7 @@ const Navbar = () => {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
+    { name: "Listening History", path: "/history" },
   ];
 
   return (
