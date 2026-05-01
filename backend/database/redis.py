@@ -67,19 +67,23 @@ async def get_redis():
     if not redis_breaker.is_available():
         yield None
         return
+
+    client = None
     try:
         pool = _get_pool()
         client = redis.Redis(connection_pool=pool)
         await client.ping()
         redis_breaker.record_success()
-        try:
-            yield client
-        finally:
-            await client.aclose()
     except Exception as e:
         redis_breaker.record_failure()
         logger.warning(f"Redis unavailable: {e}")
         yield None
+        return
+    
+    try:
+        yield client
+    finally:
+        await client.aclose()
 
 async def ping_redis() -> bool:
     client = None
