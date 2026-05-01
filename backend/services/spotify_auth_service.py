@@ -15,7 +15,7 @@ SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
 
-def get_authorize_url(state: str) -> str:       # <-- state is now a required parameter
+def get_authorize_url(state: str) -> str:
     """
     Builds the Spotify authorization URL.
     The caller is responsible for generating a cryptographically random state
@@ -32,7 +32,7 @@ def get_authorize_url(state: str) -> str:       # <-- state is now a required pa
         "response_type": "code",
         "redirect_uri": SPOTIFY_REDIRECT_URI,
         "scope": scope,
-        "state": state,                         # <-- included in redirect
+        "state": state,
     }
     return f"{SPOTIFY_AUTH_URL}?{urlencode(params)}"
 

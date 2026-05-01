@@ -14,7 +14,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({
         "exp": expire,
         "iat": datetime.now(timezone.utc),
-        "type": "access",       # <-- type claim added
+        "type": "access",
     })
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -28,7 +28,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     to_encode.update({
         "exp": expire,
         "iat": datetime.now(timezone.utc),
-        "type": "refresh",      # <-- type claim added
+        "type": "refresh",
     })
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 

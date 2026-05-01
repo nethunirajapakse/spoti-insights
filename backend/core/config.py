@@ -51,8 +51,8 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     frontend_url: str = Field(default="http://127.0.0.1:5173", alias="FRONTEND_URL")
     cookie_domain: Optional[str] = Field(default=None, alias="COOKIE_DOMAIN")
 
-    # Cookie Expiration Times (in seconds)
-    oauth_state_max_age: int = Field(default=300, alias="OAUTH_STATE_MAX_AGE")  # 5 minutes
+    # Cookie Expiration Times
+    oauth_state_max_age: int = Field(default=300, alias="OAUTH_STATE_MAX_AGE")
 
     @property
     def access_token_max_age(self) -> int:
