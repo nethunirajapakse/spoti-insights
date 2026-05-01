@@ -40,11 +40,10 @@ async def handle_spotify_callback(code: str, db: Session):
     if not spotify_id:
         raise SpotifyUserIDMissingError()
 
-    # Upsert user — explicit branch instead of exception-as-control-flow
     existing_user = user_service.get_user_by_spotify_id_or_none(db, spotify_id)
     if existing_user:
-        db_user = user_service.update_user_login_and_token(
-            db, spotify_id, spotify_refresh_token, display_name, email
+        db_user = user_service.update_user_login_and_token_from_instance(
+            db, existing_user, spotify_refresh_token, display_name, email
         )
     else:
         new_user = UserCreate(

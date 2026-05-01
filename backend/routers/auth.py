@@ -1,5 +1,6 @@
 import secrets
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -47,7 +48,7 @@ async def spotify_login(request: Request):
 async def spotify_callback(
     request: Request,
     code: str,
-    state: str,                 # Spotify echoes the state we sent
+    state: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Handle Spotify OAuth callback."""
@@ -56,9 +57,11 @@ async def spotify_callback(
     stored_state = request.cookies.get("oauth_state")
     if not state or not stored_state or not secrets.compare_digest(state, stored_state):
         logger.warning("OAuth state mismatch — possible CSRF attempt")
-        return RedirectResponse(
+        response = RedirectResponse(
             url=f"{settings.frontend_url}/login?error=state_mismatch"
         )
+        response.delete_cookie("oauth_state", path="/", domain=settings.cookie_domain)
+        return response
     # ────────────────────────────────────────────────────────────────────────
 
     try:
@@ -74,24 +77,22 @@ async def spotify_callback(
 
         redirect = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
 
-        # Clear the one-time state cookie now that it has been consumed
         redirect.delete_cookie(
             "oauth_state",
             path="/",
             domain=settings.cookie_domain,
         )
 
-        # Replaced magic numbers with settings
         redirect.set_cookie(
-            key="access_token",  
-            value=access_token,  
-            max_age=settings.access_token_max_age,  
+            key="access_token",
+            value=access_token,
+            max_age=settings.access_token_max_age,
             **cookie_config
         )
         redirect.set_cookie(
-            key="refresh_token", 
-            value=refresh_token, 
-            max_age=settings.refresh_token_max_age, 
+            key="refresh_token",
+            value=refresh_token,
+            max_age=settings.refresh_token_max_age,
             **cookie_config
         )
 
@@ -135,7 +136,7 @@ async def refresh_token(
             response.set_cookie(
                 key="access_token",
                 value=new_tokens["access_token"],
-                max_age=settings.access_token_max_age,  # Replaced magic number
+                max_age=settings.access_token_max_age,
                 httponly=True,
                 samesite=settings.cookie_samesite,
                 secure=settings.cookie_secure,
@@ -176,8 +177,6 @@ async def logout(
     except Exception as e:
         logger.error(f"Logout cache error (non-fatal): {str(e)}")
 
-    # delete_cookie only reliably accepts path and domain; httponly/samesite/secure
-    # are ignored by browsers on cookie deletion and not supported by all frameworks.
     response.delete_cookie("access_token",  path="/", domain=settings.cookie_domain)
     response.delete_cookie("refresh_token", path="/", domain=settings.cookie_domain)
 

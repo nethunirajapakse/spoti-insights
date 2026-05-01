@@ -50,17 +50,34 @@ def update_user_login_and_token(
     email: Optional[str] = None,
 ) -> User:
     """
-    Updates a user's login time, Spotify refresh token, and optionally
-    display name / email.
+    Looks up the user by spotify_id then delegates to the instance-based version.
     Raises UserNotFoundError if the user does not exist.
     """
     db_user = get_user_by_spotify_id(db, spotify_id)
+    return update_user_login_and_token_from_instance(
+        db, db_user, spotify_refresh_token, display_name, email
+    )
+
+
+def update_user_login_and_token_from_instance(
+    db: Session,
+    db_user: User,                  # accepts the already-fetched instance — no second query
+    spotify_refresh_token: str,
+    display_name: Optional[str] = None,
+    email: Optional[str] = None,
+) -> User:
+    """
+    Updates a user's login time, Spotify refresh token, and optionally
+    display name / email.
+    Accepts an existing User instance so callers that already have the row
+    (e.g. handle_spotify_callback) don't pay for a second DB lookup.
+    """
     db_user.spotify_refresh_token = encrypt_token(spotify_refresh_token)
     db_user.last_login = datetime.now(timezone.utc)
     if display_name:
         db_user.display_name = display_name
     if email:
-        db_user.email = email               # was db_user.email typo in original
+        db_user.email = email
     db.commit()
     db.refresh(db_user)
     return db_user
