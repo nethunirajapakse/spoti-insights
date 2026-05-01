@@ -48,25 +48,22 @@ async def spotify_login(request: Request):
 async def spotify_callback(
     request: Request,
     code: str,
-    state: Optional[str] = None,
+    state: str,
     db: Session = Depends(get_db),
 ):
-    """Handle Spotify OAuth callback."""
-
-    # ── CSRF guard ──────────────────────────────────────────────────────────
+    # 1. CSRF Check: Compare incoming state to the one in our cookie
     stored_state = request.cookies.get("oauth_state")
-    if not state or not stored_state or not secrets.compare_digest(state, stored_state):
-        logger.warning("OAuth state mismatch — possible CSRF attempt")
-        response = RedirectResponse(
-            url=f"{settings.frontend_url}/login?error=state_mismatch"
-        )
-        response.delete_cookie("oauth_state", path="/", domain=settings.cookie_domain)
-        return response
-    # ────────────────────────────────────────────────────────────────────────
+    if not secrets.compare_digest(state, stored_state or ""):
+        logger.warning("OAuth state mismatch")
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=state_mismatch")
 
     try:
+        # 2. Exchange code for tokens
         access_token, refresh_token = await auth_service.handle_spotify_callback(code, db)
 
+        # 3. Setup Response & Cookies
+        redirect = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
+        
         cookie_config = {
             "httponly": True,
             "samesite": settings.cookie_samesite,
@@ -75,34 +72,17 @@ async def spotify_callback(
             "path": "/",
         }
 
-        redirect = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
+        # We delete it here on success just to be tidy, but even this is optional
+        redirect.delete_cookie("oauth_state", path="/", domain=settings.cookie_domain)
 
-        redirect.delete_cookie(
-            "oauth_state",
-            path="/",
-            domain=settings.cookie_domain,
-        )
-
-        redirect.set_cookie(
-            key="access_token",
-            value=access_token,
-            max_age=settings.access_token_max_age,
-            **cookie_config
-        )
-        redirect.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            max_age=settings.refresh_token_max_age,
-            **cookie_config
-        )
+        redirect.set_cookie(key="access_token", value=access_token, max_age=settings.access_token_max_age, **cookie_config)
+        redirect.set_cookie(key="refresh_token", value=refresh_token, max_age=settings.refresh_token_max_age, **cookie_config)
 
         return redirect
 
     except Exception as e:
         logger.error(f"Spotify callback error: {str(e)}")
         return RedirectResponse(url=f"{settings.frontend_url}/login?error=auth_failed")
-
-
 @router.post("/refresh")
 @limiter.limit("20/minute")
 async def refresh_token(

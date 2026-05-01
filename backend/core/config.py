@@ -52,10 +52,18 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     cookie_domain: Optional[str] = Field(default=None, alias="COOKIE_DOMAIN")
 
     # Cookie Expiration Times (in seconds)
-    oauth_state_max_age: int = Field(default=300, alias="OAUTH_STATE_MAX_AGE")  # 300 seconds = 5 minutes
-    access_token_max_age: int = Field(default=3600, alias="ACCESS_TOKEN_MAX_AGE")   # 3600 seconds = 1 hour
-    refresh_token_max_age: int = Field(default=2592000, alias="REFRESH_TOKEN_MAX_AGE")  # 2592000 seconds = 30 days
-    
+    oauth_state_max_age: int = Field(default=300, alias="OAUTH_STATE_MAX_AGE")  # 5 minutes
+
+    @property
+    def access_token_max_age(self) -> int:
+        """Cookie lifetime matches the JWT lifetime exactly."""
+        return self.access_token_expire_minutes * 60
+
+    @property
+    def refresh_token_max_age(self) -> int:
+        """Cookie lifetime matches the JWT lifetime exactly."""
+        return self.refresh_token_expire_days * 86400
+
     # Database
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
     
