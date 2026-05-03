@@ -1,8 +1,8 @@
 import { TrendingUp } from 'lucide-react';
-import { useTopTracks } from "@/hooks/useTopTracks";
+import { useTopItems } from "@/hooks/useTopItems";
 
 const ListeningHistory = () => {
-  const { data: tracksData, isLoading } = useTopTracks("medium_term", 10);
+  const { topItemsData, isTopItemsFetching } = useTopItems("tracks", "medium_term", 10);
 
   const formatDuration = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -24,9 +24,9 @@ const ListeningHistory = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {isLoading ? (
+              {isTopItemsFetching ? (
                 <tr><td colSpan={4} className="p-10 text-center animate-pulse">Loading tracks...</td></tr>
-              ) : tracksData?.items.map((track: any) => (
+              ) : topItemsData?.items.map((track: any) => (
                 <tr key={track.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
@@ -56,7 +56,7 @@ const ListeningHistory = () => {
           <div className="space-y-4">
             <div>
               <p className="text-[10px] uppercase text-[#bccbb9]">Total Found</p>
-              <p className="text-2xl font-black text-[#53e076]">{tracksData?.items.length || 0}</p>
+              <p className="text-2xl font-black text-[#53e076]">{topItemsData?.items.length || 0}</p>
             </div>
             <button className="w-full py-3 bg-[#53e076] text-[#003914] rounded-full font-bold text-sm hover:scale-[1.02] transition-transform">
               Export Data
