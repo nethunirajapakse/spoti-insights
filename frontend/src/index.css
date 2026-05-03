@@ -1,3 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px; /* Makes the scrollbar thinner */
+  height: 6px; /* For horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+  background: #0e150e; /* Matches your background color */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a211a; /* Darker green for the thumb base */
+  border-radius: 10px;
+  border: 1px solid #53e07633; /* Very subtle green border */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #53e076; /* Bright green on hover */
+  box-shadow: 0 0 10px #53e07666; /* Glow effect */
+}
+
+/* For Firefox (different syntax) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1a211a #0e150e;
+}
