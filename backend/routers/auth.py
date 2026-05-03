@@ -1,7 +1,6 @@
 import secrets
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -25,7 +24,7 @@ router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 
 @router.get("/spotify/login")
 @limiter.limit("10/minute")
-async def spotify_login(request: Request):
+async def spotify_login():
     """
     Initiate Spotify OAuth flow.
     Generates a cryptographically random state value, stores it in a
@@ -138,13 +137,11 @@ async def refresh_token(
     # Denylist the consumed refresh token
     denylist = JWTDenylist(redis_client)
     if old_refresh_jti:
-        # Remaining TTL of the old token — decode it to get exp
         try:
             old_payload = decode_refresh_token(refresh_token_value)
             exp = old_payload.get("exp", 0)
             remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
         except Exception:
-            # If we can't decode it here something is very wrong; use a safe fallback
             remaining_ttl = settings.refresh_token_expire_days * 86400
 
         await denylist.add(old_refresh_jti, remaining_ttl)
@@ -164,7 +161,6 @@ async def refresh_token(
             max_age=settings.access_token_max_age,
             **cookie_config,
         )
-        # Rotate the refresh token cookie
         response.set_cookie(
             key="refresh_token",
             value=new_tokens["refresh_token"],
@@ -172,13 +168,16 @@ async def refresh_token(
             **cookie_config,
         )
 
-    logger.info("Access and refresh tokens rotated successfully")
-    return {
+    logger.info("Tokens rotated successfully")
+    response_body: dict = {
         "message": "Token refreshed successfully",
         "access_token": new_tokens["access_token"],
-        "refresh_token": new_tokens["refresh_token"],
         "token_type": "bearer",
     }
+    if not from_cookie:
+        response_body["refresh_token"] = new_tokens["refresh_token"]
+
+    return response_body
 
 
 @router.post("/logout")
@@ -199,25 +198,25 @@ async def logout(
     """
     denylist = JWTDenylist(redis_client)
 
-    # Denylist the access token
-    access_token_value = request.cookies.get("access_token")
-    auth_header = request.headers.get("Authorization")
-    if not access_token_value and auth_header and auth_header.startswith("Bearer "):
-        access_token_value = auth_header.split(" ")[1]
+    # Denylist the access token — reuse the payload already decoded by
+    # get_current_user (stored on request.state) to avoid a second decode.
+    access_payload = getattr(request.state, "token_payload", None)
+    if access_payload:
+        jti = access_payload.get("jti")
+        exp = access_payload.get("exp", 0)
+        if jti:
+            remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
+            await denylist.add(jti, remaining_ttl)
+            # truncate jti in logs — full UUID can correlate sessions;
+            # first 8 chars is enough for debugging.
+            logger.info(
+                "Access token denylisted for user %s (jti=%.8s…)",
+                current_user.spotify_id,
+                jti,
+            )
 
-    if access_token_value:
-        try:
-            payload = decode_access_token(access_token_value)
-            jti = payload.get("jti")
-            exp = payload.get("exp", 0)
-            if jti:
-                remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
-                await denylist.add(jti, remaining_ttl)
-                logger.info(f"Access token jti={jti} denylisted for user {current_user.spotify_id}")
-        except Exception as e:
-            logger.warning(f"Could not denylist access token on logout: {e}")
-
-    # Denylist the refresh token
+    # Denylist the refresh token — still needs a decode since get_current_user
+    # only handles the access token.
     refresh_token_value = request.cookies.get("refresh_token")
     if refresh_token_value:
         try:
@@ -227,9 +226,13 @@ async def logout(
             if jti:
                 remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
                 await denylist.add(jti, remaining_ttl)
-                logger.info(f"Refresh token jti={jti} denylisted for user {current_user.spotify_id}")
+                logger.info(
+                    "Refresh token denylisted for user %s (jti=%.8s…)",
+                    current_user.spotify_id,
+                    jti,
+                )
         except Exception as e:
-            logger.warning(f"Could not denylist refresh token on logout: {e}")
+            logger.warning("Could not denylist refresh token on logout: %s", e)
 
     # Clear Spotify token cache
     try:
@@ -237,7 +240,7 @@ async def logout(
             cache = RedisTokenCache(redis_client)
             await cache.invalidate_token(current_user.spotify_id)
     except Exception as e:
-        logger.error(f"Logout cache error (non-fatal): {str(e)}")
+        logger.error("Logout cache error (non-fatal): %s", e)
 
     response.delete_cookie("access_token", path="/", domain=settings.cookie_domain)
     response.delete_cookie("refresh_token", path="/", domain=settings.cookie_domain)
@@ -248,7 +251,6 @@ async def logout(
 @router.get("/verify")
 @limiter.limit("30/minute")
 async def verify_token(
-    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """Verify if the current access token is valid."""

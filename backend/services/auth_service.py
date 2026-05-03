@@ -95,8 +95,6 @@ async def refresh_access_token(refresh_token: str) -> dict:
       - old_refresh_jti:   jti of the consumed refresh token (for denylisting)
     """
     try:
-        # decode_refresh_token raises 401 if the token is invalid or has
-        # type != "refresh", so an access token can never sneak through here.
         payload = decode_refresh_token(refresh_token)
 
         spotify_id = payload.get("sub")
@@ -111,16 +109,15 @@ async def refresh_access_token(refresh_token: str) -> dict:
 
         token_payload = {"sub": spotify_id, "user_id": user_id}
         new_access_token = create_access_token(token_payload)
-        new_refresh_token = create_refresh_token(token_payload)   # rotation
+        new_refresh_token = create_refresh_token(token_payload)
 
         return {
             "access_token": new_access_token,
             "refresh_token": new_refresh_token,
-            "old_refresh_jti": old_jti,     # caller denylists this
+            "old_refresh_jti": old_jti,
         }
 
     except HTTPException:
-        # decode_refresh_token already raised a well-formed 401 — re-raise as-is
         raise
     except Exception as e:
         logger.error(f"Unexpected error refreshing access token: {str(e)}")

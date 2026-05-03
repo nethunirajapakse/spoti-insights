@@ -77,6 +77,8 @@ async def get_redis():
     except Exception as e:
         redis_breaker.record_failure()
         logger.warning(f"Redis unavailable: {e}")
+        if client is not None:
+            await client.aclose()
         yield None
         return
     
@@ -175,7 +177,10 @@ class RedisTokenCache:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+import time
 
+_last_deny_warn: float = 0.0
+_DENY_WARN_INTERVAL = 60.0
 class JWTDenylist:
     """
     Stores revoked JWT IDs (jti claims) in Redis with a TTL matching the
@@ -208,7 +213,7 @@ class JWTDenylist:
         Returns True on success, False if Redis is unavailable.
         """
         if not self.redis:
-            logger.warning("JWTDenylist.add: Redis unavailable — token jti=%s not denylisted", jti)
+            logger.warning("JWTDenylist.add: Redis unavailable — jti=%.8s not denylisted", jti)
             return False
         try:
             await self.redis.set(self._key(jti), "1", ex=max(1, ttl_seconds))
@@ -222,11 +227,23 @@ class JWTDenylist:
         Returns True if the jti is on the denylist.
         Returns False (fail-open) if Redis is unavailable — logs the bypass.
         """
+        global _last_deny_warn
+
         if not self.redis:
-            logger.warning("JWTDenylist.is_denied: Redis unavailable — fail-open for jti=%s", jti)
+            # Fix #2: throttle — log at most once per minute during outage
+            now = time.monotonic()
+            if now - _last_deny_warn >= _DENY_WARN_INTERVAL:
+                logger.warning(
+                    "JWTDenylist.is_denied: Redis unavailable — failing open. "
+                    "Revoked tokens may be accepted until Redis recovers."
+                )
+                _last_deny_warn = now
             return False
         try:
             return bool(await self.redis.exists(self._key(jti)))
         except (ConnectionError, TimeoutError) as e:
-            logger.warning("JWTDenylist.is_denied failed (Redis error) — fail-open: %s", e)
+            now = time.monotonic()
+            if now - _last_deny_warn >= _DENY_WARN_INTERVAL:
+                logger.warning("JWTDenylist.is_denied failed (Redis error) — fail-open: %s", e)
+                _last_deny_warn = now
             return False
