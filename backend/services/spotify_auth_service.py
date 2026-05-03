@@ -1,19 +1,7 @@
-import os
 import httpx
-from dotenv import load_dotenv
 from typing import Dict, Any
 from urllib.parse import urlencode
-
-load_dotenv()
-
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
-
-SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
-SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
-
+from backend.core.config import settings
 
 def get_authorize_url(state: str) -> str:
     """
@@ -22,31 +10,27 @@ def get_authorize_url(state: str) -> str:
     value, storing it (e.g. in a short-lived cookie), and passing it here so
     Spotify echoes it back in the callback for CSRF validation.
     """
-    scope = (
-        "user-read-private user-read-email user-top-read "
-        "user-library-read playlist-read-private "
-        "playlist-read-collaborative user-read-recently-played"
-    )
     params = {
-        "client_id": SPOTIFY_CLIENT_ID,
+        "client_id": settings.spotify_client_id,
         "response_type": "code",
-        "redirect_uri": SPOTIFY_REDIRECT_URI,
-        "scope": scope,
+        "redirect_uri": settings.spotify_redirect_uri,
+        "scope": settings.spotify_scopes,
         "state": state,
     }
-    return f"{SPOTIFY_AUTH_URL}?{urlencode(params)}"
+    return f"{settings.spotify_auth_url}?{urlencode(params)}"
 
 
 async def get_spotify_tokens(code: str) -> Dict[str, Any]:
+    """Exchanges auth code for access/refresh tokens."""
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            SPOTIFY_TOKEN_URL,
+            settings.spotify_token_url,
             data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": SPOTIFY_REDIRECT_URI,
-                "client_id": SPOTIFY_CLIENT_ID,
-                "client_secret": SPOTIFY_CLIENT_SECRET,
+                "redirect_uri": settings.spotify_redirect_uri,
+                "client_id": settings.spotify_client_id,
+                "client_secret": settings.spotify_client_secret,
             },
         )
         response.raise_for_status()
@@ -54,14 +38,15 @@ async def get_spotify_tokens(code: str) -> Dict[str, Any]:
 
 
 async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
+    """Refreshes an expired access token."""
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            SPOTIFY_TOKEN_URL,
+            settings.spotify_token_url,
             data={
                 "grant_type": "refresh_token",
                 "refresh_token": refresh_token,
-                "client_id": SPOTIFY_CLIENT_ID,
-                "client_secret": SPOTIFY_CLIENT_SECRET,
+                "client_id": settings.spotify_client_id,
+                "client_secret": settings.spotify_client_secret,
             },
         )
         response.raise_for_status()
@@ -69,9 +54,10 @@ async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
 
 
 async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
+    """Fetches the current user's Spotify profile."""
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"{SPOTIFY_API_BASE_URL}/me",
+            f"{settings.spotify_api_base_url}/me",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         response.raise_for_status()

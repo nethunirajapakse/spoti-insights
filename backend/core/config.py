@@ -78,6 +78,19 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     # Spotify API
     spotify_client_id: Optional[str] = Field(default=None, alias="SPOTIFY_CLIENT_ID")
     spotify_client_secret: Optional[str] = Field(default=None, alias="SPOTIFY_CLIENT_SECRET")
+    spotify_redirect_uri: str = Field(..., alias="SPOTIFY_REDIRECT_URI")
+    
+    # Spotify API Endpoints (Constants)
+    spotify_auth_url: str = "https://accounts.spotify.com/authorize"
+    spotify_token_url: str = "https://accounts.spotify.com/api/token"
+    spotify_api_base_url: str = "https://api.spotify.com/v1"
+    
+    # Spotify Scopes
+    spotify_scopes: str = (
+        "user-read-private user-read-email user-top-read "
+        "user-library-read playlist-read-private "
+        "playlist-read-collaborative user-read-recently-played"
+    )
     
     # Computed properties
     @property
