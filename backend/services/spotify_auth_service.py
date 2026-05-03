@@ -2,6 +2,10 @@ import httpx
 from typing import Dict, Any
 from urllib.parse import urlencode
 from backend.core.config import settings
+from backend.exceptions.custom_exceptions import SpotifyTokensError
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_authorize_url(state: str) -> str:
     """
@@ -22,43 +26,65 @@ def get_authorize_url(state: str) -> str:
 
 async def get_spotify_tokens(code: str) -> Dict[str, Any]:
     """Exchanges auth code for access/refresh tokens."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            settings.spotify_token_url,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": settings.spotify_redirect_uri,
-                "client_id": settings.spotify_client_id,
-                "client_secret": settings.spotify_client_secret,
-            },
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                settings.spotify_token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": settings.spotify_redirect_uri,
+                    "client_id": settings.spotify_client_id,
+                    "client_secret": settings.spotify_client_secret,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        raise SpotifyTokensError()
+    except httpx.RequestError as e:
+        logger.error("Network error reaching Spotify: %s", e)
+        raise SpotifyTokensError()
 
 
 async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
     """Refreshes an expired access token."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            settings.spotify_token_url,
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": refresh_token,
-                "client_id": settings.spotify_client_id,
-                "client_secret": settings.spotify_client_secret,
-            },
-        )
-        response.raise_for_status()
-        return response.json()
-
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                settings.spotify_token_url,
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": settings.spotify_client_id,
+                    "client_secret": settings.spotify_client_secret,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        raise SpotifyTokensError()
+    except httpx.RequestError as e:
+        logger.error("Network error reaching Spotify: %s", e)
+        raise SpotifyTokensError()
+    
 
 async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
     """Fetches the current user's Spotify profile."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{settings.spotify_api_base_url}/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        response.raise_for_status()
-        return response.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.spotify_api_base_url}/me",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        raise SpotifyTokensError()
+    except httpx.RequestError as e:
+        logger.error("Network error reaching Spotify: %s", e)
+        raise SpotifyTokensError()
+    
