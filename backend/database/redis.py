@@ -177,8 +177,6 @@ class RedisTokenCache:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-import time
-
 _last_deny_warn: float = 0.0
 _DENY_WARN_INTERVAL = 60.0
 class JWTDenylist:
