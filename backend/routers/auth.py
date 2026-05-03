@@ -220,7 +220,6 @@ async def logout(
     refresh_token_value = request.cookies.get("refresh_token")
     if refresh_token_value:
         try:
-            from backend.core.jwt_utils import decode_refresh_token
             payload = decode_refresh_token(refresh_token_value)
             jti = payload.get("jti")
             exp = payload.get("exp", 0)
