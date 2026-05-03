@@ -16,6 +16,7 @@ from backend.core.dependencies import get_current_user
 from backend.core.jwt_utils import decode_access_token
 from backend.models.user import User
 from backend.exceptions.custom_exceptions import SpotifyTokensError, SpotifyUserIDMissingError
+from backend.core.jwt_utils import decode_refresh_token
 
 logger = logging.getLogger(__name__)
 
