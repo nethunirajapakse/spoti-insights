@@ -4,11 +4,11 @@ import TopNavbar from "./TopNavbar";
 
 const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-[#0e150e] text-[#dde5d9]">
+    <div className="min-h-screen">
       <Sidebar />
-      <main className="ml-64 p-8">
+      <main className="ml-64 p-gutter">
         <TopNavbar />
-        <Outlet /> 
+        <Outlet />
       </main>
     </div>
   );

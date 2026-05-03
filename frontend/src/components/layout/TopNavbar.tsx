@@ -12,7 +12,7 @@ const TopNavbar = () => {
   // Map paths to titles
   const getTitle = (path: string) => {
     switch (path) {
-      case '/dashboard': return 'Artist Insights';
+      case '/dashboard': return 'Overview';
       case '/history': return 'Listening History';
       case '/settings': return 'Settings';
       default: return 'Overview';
