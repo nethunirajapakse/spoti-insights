@@ -96,7 +96,6 @@ async def spotify_callback(
 async def refresh_token(
     request: Request,
     response: Response,
-    db: Session = Depends(get_db),
     redis_client=Depends(get_redis),
 ):
     """
