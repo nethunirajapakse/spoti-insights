@@ -9,6 +9,7 @@ from backend.exceptions.custom_exceptions import (
     SpotifyUserIDMissingError,
     RefreshTokenMissingError,
 )
+from fastapi import HTTPException
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,11 +55,11 @@ async def handle_spotify_callback(code: str, db: Session):
         )
         db_user = user_service.create_user(db, new_user)
 
-    # Issue our own JWTs — both carry a "type" claim so they can never be
-    # used interchangeably at the decode step.
+    # Issue our own JWTs — both carry a "type" and "jti" claim so they can
+    # never be used interchangeably and can be individually revoked.
     token_payload = {"sub": db_user.spotify_id, "user_id": db_user.id}
-    jwt_token = create_access_token(token_payload)          # embeds type="access"
-    app_refresh_token = create_refresh_token(token_payload) # embeds type="refresh"
+    jwt_token = create_access_token(token_payload)
+    app_refresh_token = create_refresh_token(token_payload)
 
     return jwt_token, app_refresh_token
 
@@ -84,27 +85,42 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
 
 async def refresh_access_token(refresh_token: str) -> dict:
     """
-    Validates our application refresh token and issues a new JWT access token.
-    Uses decode_refresh_token (not decode_access_token) so an access token
-    submitted here is explicitly rejected.
+    Validates our application refresh token, issues a new access token,
+    and rotates the refresh token (issues a new one, returns the old jti
+    so the caller can denylist it).
+
+    Returns a dict with:
+      - access_token:      newly issued access token
+      - refresh_token:     newly issued refresh token (rotation)
+      - old_refresh_jti:   jti of the consumed refresh token (for denylisting)
     """
     try:
-        # decode_refresh_token raises 401 if the token is invalid or has
-        # type != "refresh", so an access token can never sneak through here.
         payload = decode_refresh_token(refresh_token)
 
         spotify_id = payload.get("sub")
         user_id = payload.get("user_id")
+        old_jti = payload.get("jti")
+        old_exp = payload.get("exp", 0)
 
-        if not spotify_id or not user_id:
-            raise ValueError("Invalid token payload — missing sub or user_id")
+        if not spotify_id or not user_id or not old_jti:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token payload: missing required claims",
+            )
 
-        new_access_token = create_access_token({"sub": spotify_id, "user_id": user_id})
+        token_payload = {"sub": spotify_id, "user_id": user_id}
+        new_access_token = create_access_token(token_payload)
+        new_refresh_token = create_refresh_token(token_payload)
 
         return {
             "access_token": new_access_token,
-            "refresh_token": refresh_token,     # refresh token is reused until it expires
+            "refresh_token": new_refresh_token,
+            "old_refresh_jti": old_jti,
+            "old_refresh_exp": old_exp,
         }
-    except Exception as e:
-        logger.error(f"Failed to refresh access token: {str(e)}")
+
+    except HTTPException:
         raise
+    except Exception as e:
+        logger.error(f"Unexpected error refreshing access token: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

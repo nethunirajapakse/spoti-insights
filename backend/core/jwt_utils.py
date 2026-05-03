@@ -3,40 +3,41 @@ from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 from backend.core.config import settings
+import uuid
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def _base_claims(data: dict, expire: datetime, token_type: str) -> dict:
+    """Build common claims shared by both token types."""
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({
         "exp": expire,
         "iat": datetime.now(timezone.utc),
-        "type": "access",       # <-- type claim added
+        "type": token_type,
+        "jti": str(uuid.uuid4()),   # unique ID — used as the denylist key
     })
+    return to_encode
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
+    )
+    to_encode = _base_claims(data, expire, "access")
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
-    to_encode.update({
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-        "type": "refresh",      # <-- type claim added
-    })
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(days=settings.refresh_token_expire_days)
+    )
+    to_encode = _base_claims(data, expire, "refresh")
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_access_token(token: str) -> dict:
+def _decode_and_validate(token: str, expected_type: str) -> dict:
     """
-    Decodes and validates an access token.
-    Raises 401 if the token is invalid or is not an access token.
+    Shared decode logic. Raises 401 on any failure so the two public
+    functions can never be used interchangeably.
     """
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
@@ -46,13 +47,21 @@ def decode_access_token(token: str) -> dict:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if payload.get("type") != "access":
+    if payload.get("type") != expected_type:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
+
+
+def decode_access_token(token: str) -> dict:
+    """
+    Decodes and validates an access token.
+    Raises 401 if the token is invalid or is not an access token.
+    """
+    return _decode_and_validate(token, "access")
 
 
 def decode_refresh_token(token: str) -> dict:
@@ -62,18 +71,4 @@ def decode_refresh_token(token: str) -> dict:
     This is intentionally separate from decode_access_token so the two
     token types can never be used interchangeably.
     """
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token type",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return payload
+    return _decode_and_validate(token, "refresh")
