@@ -1,7 +1,7 @@
 import api from "@/api/axios";
 
-export const getTopTracks = async (time_range: string, limit: number) => {
-  const response = await api.get("/analytics/top-items/tracks", {
+export const getTopItems = async (time_range: string, limit: number, itemType: string) => {
+  const response = await api.get(`/analytics/top-items/${itemType}`, {
     params: { time_range, limit },
   });
   return response.data;
