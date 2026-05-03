@@ -100,6 +100,7 @@ async def refresh_access_token(refresh_token: str) -> dict:
         spotify_id = payload.get("sub")
         user_id = payload.get("user_id")
         old_jti = payload.get("jti")
+        old_exp = payload.get("exp", 0)
 
         if not spotify_id or not user_id or not old_jti:
             raise HTTPException(
@@ -115,6 +116,7 @@ async def refresh_access_token(refresh_token: str) -> dict:
             "access_token": new_access_token,
             "refresh_token": new_refresh_token,
             "old_refresh_jti": old_jti,
+            "old_refresh_exp": old_exp,
         }
 
     except HTTPException:

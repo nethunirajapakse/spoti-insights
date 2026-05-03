@@ -133,17 +133,13 @@ async def refresh_token(
         )
 
     old_refresh_jti = new_tokens["old_refresh_jti"]
+    old_refresh_exp = new_tokens["old_refresh_exp"]
 
-    # Denylist the consumed refresh token
+    # Denylist the consumed refresh token — exp comes from the service so
+    # there is no second decode here and no fallback failure path needed.
     denylist = JWTDenylist(redis_client)
     if old_refresh_jti:
-        try:
-            old_payload = decode_refresh_token(refresh_token_value)
-            exp = old_payload.get("exp", 0)
-            remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
-        except Exception:
-            remaining_ttl = settings.refresh_token_expire_days * 86400
-
+        remaining_ttl = max(1, int(old_refresh_exp - datetime.now(timezone.utc).timestamp()))
         await denylist.add(old_refresh_jti, remaining_ttl)
 
     cookie_config = {
