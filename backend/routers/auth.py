@@ -24,7 +24,7 @@ router = APIRouter(prefix="/public/auth", tags=["Authentication"])
 
 @router.get("/spotify/login")
 @limiter.limit("10/minute")
-async def spotify_login():
+async def spotify_login(request: Request):
     """
     Initiate Spotify OAuth flow.
     Generates a cryptographically random state value, stores it in a
