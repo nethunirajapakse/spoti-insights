@@ -251,6 +251,7 @@ async def logout(
 @router.get("/verify")
 @limiter.limit("30/minute")
 async def verify_token(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """Verify if the current access token is valid."""
