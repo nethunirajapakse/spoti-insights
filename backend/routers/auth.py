@@ -13,7 +13,7 @@ from backend.database.redis import get_redis, RedisTokenCache, JWTDenylist
 from backend.core.rate_limiter import limiter
 from backend.core.config import settings
 from backend.core.dependencies import get_current_user
-from backend.core.jwt_utils import decode_access_token, decode_refresh_token
+from backend.core.jwt_utils import decode_access_token
 from backend.models.user import User
 from backend.exceptions.custom_exceptions import SpotifyTokensError, SpotifyUserIDMissingError
 
