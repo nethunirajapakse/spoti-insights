@@ -176,7 +176,10 @@ class RedisTokenCache:
             return stats
         except Exception as e:
             return {"status": "error", "error": str(e)}
+        
 
+# _last_deny_warn is per-process. Under multi-worker deployments each worker
+# throttles independently — total log volume scales with worker count.
 _last_deny_warn: float = 0.0
 _DENY_WARN_INTERVAL = 60.0
 class JWTDenylist:

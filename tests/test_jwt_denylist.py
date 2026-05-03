@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from redis.exceptions import ConnectionError, TimeoutError
 from backend.database.redis import JWTDenylist
+import logging
 
 
 @pytest.fixture
@@ -95,3 +96,19 @@ async def test_key_format(mock_redis):
     await denylist.add("my-jti-value", 60)
     call_args = mock_redis.set.call_args[0]
     assert call_args[0] == "jwt:deny:my-jti-value"
+
+@pytest.mark.asyncio
+async def test_is_denied_fail_open_logs_throttled(caplog):
+    """Warning should only fire once per interval, not on every call."""
+    import backend.database.redis as redis_module
+    redis_module._last_deny_warn = 0.0  # reset throttle
+
+    denylist = JWTDenylist(None)
+
+    with caplog.at_level(logging.WARNING, logger="backend.database.redis"):
+        await denylist.is_denied("jti-1")
+        await denylist.is_denied("jti-2")
+        await denylist.is_denied("jti-3")
+
+    warning_count = sum(1 for r in caplog.records if "failing open" in r.message)
+    assert warning_count == 1  # throttled — only fired once
