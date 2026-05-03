@@ -139,7 +139,6 @@ async def refresh_token(
     if old_refresh_jti:
         # Remaining TTL of the old token — decode it to get exp
         try:
-            from backend.core.jwt_utils import decode_refresh_token
             old_payload = decode_refresh_token(refresh_token_value)
             exp = old_payload.get("exp", 0)
             remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
