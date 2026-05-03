@@ -103,8 +103,11 @@ async def refresh_access_token(refresh_token: str) -> dict:
         user_id = payload.get("user_id")
         old_jti = payload.get("jti")
 
-        if not spotify_id or not user_id:
-            raise ValueError("Invalid token payload — missing sub or user_id")
+        if not spotify_id or not user_id or not old_jti:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token payload: missing required claims",
+            )
 
         token_payload = {"sub": spotify_id, "user_id": user_id}
         new_access_token = create_access_token(token_payload)
