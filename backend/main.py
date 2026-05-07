@@ -22,6 +22,7 @@ from backend.core.config import settings, OPENAPI_TAGS, SWAGGER_UI_PARAMETERS
 from backend.core.rate_limiter import limiter, rate_limit_handler
 from backend.services import spotify_api_service
 from backend.utils.openapi import customize_openapi
+from backend.jobs.spotify_sync import start_scheduler
 
 class RedisOutageFilter(logging.Filter):
     """
@@ -59,9 +60,11 @@ async def lifespan(app: FastAPI):
     spotify_api_service.init_spotify_client()
     logger.info("Spotify HTTP client initialized.")
     logger.info("Running in %s mode", settings.environment)
+    scheduler = start_scheduler() 
 
     yield
-
+    
+    scheduler.shutdown()
     await spotify_api_service.close_spotify_client()
     logger.info("Spotify HTTP client closed.")
 
