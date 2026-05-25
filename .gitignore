@@ -34,3 +34,6 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+
+# Alembic
+alembic/versions_old_backup/
