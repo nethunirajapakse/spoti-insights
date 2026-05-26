@@ -121,6 +121,6 @@ async def refresh_access_token(refresh_token: str) -> dict:
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Unexpected error refreshing access token: {str(e)}")
+    except Exception:
+        logger.exception("Unexpected error refreshing access token")
         raise HTTPException(status_code=500, detail="Internal server error")

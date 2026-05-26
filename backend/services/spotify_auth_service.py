@@ -7,6 +7,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Module-level constants so identical log messages aren't duplicated across
+# the three Spotify HTTP helpers (Sonar flagged 3x duplication).
+_SPOTIFY_TOKEN_EXCHANGE_FAILED_MSG = "Spotify token exchange failed: %s"
+_SPOTIFY_NETWORK_ERROR_MSG = "Network error reaching Spotify: %s"
+
+
 def get_authorize_url(state: str) -> str:
     """
     Builds the Spotify authorization URL.
@@ -41,10 +47,10 @@ async def get_spotify_tokens(code: str) -> Dict[str, Any]:
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as e:
-        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        logger.warning(_SPOTIFY_TOKEN_EXCHANGE_FAILED_MSG, e.response.status_code)
         raise SpotifyTokensError()
-    except httpx.RequestError as e:
-        logger.error("Network error reaching Spotify: %s", e)
+    except httpx.RequestError:
+        logger.exception(_SPOTIFY_NETWORK_ERROR_MSG, "get_spotify_tokens")
         raise SpotifyTokensError()
 
 
@@ -64,12 +70,12 @@ async def refresh_spotify_token(refresh_token: str) -> Dict[str, Any]:
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as e:
-        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        logger.warning(_SPOTIFY_TOKEN_EXCHANGE_FAILED_MSG, e.response.status_code)
         raise SpotifyTokensError()
-    except httpx.RequestError as e:
-        logger.error("Network error reaching Spotify: %s", e)
+    except httpx.RequestError:
+        logger.exception(_SPOTIFY_NETWORK_ERROR_MSG, "refresh_spotify_token")
         raise SpotifyTokensError()
-    
+
 
 async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
     """Fetches the current user's Spotify profile."""
@@ -82,9 +88,8 @@ async def get_spotify_user_profile(access_token: str) -> Dict[str, Any]:
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as e:
-        logger.warning("Spotify token exchange failed: %s", e.response.status_code)
+        logger.warning(_SPOTIFY_TOKEN_EXCHANGE_FAILED_MSG, e.response.status_code)
         raise SpotifyTokensError()
-    except httpx.RequestError as e:
-        logger.error("Network error reaching Spotify: %s", e)
+    except httpx.RequestError:
+        logger.exception(_SPOTIFY_NETWORK_ERROR_MSG, "get_spotify_user_profile")
         raise SpotifyTokensError()
-    

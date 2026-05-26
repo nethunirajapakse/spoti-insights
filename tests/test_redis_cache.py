@@ -155,15 +155,28 @@ class TestDistributedLocking:
     """Test distributed locking mechanism."""
 
     @pytest.mark.asyncio
-    async def test_lock_acquisition(self, token_cache):
-        """Test basic lock acquisition and release."""
+    async def test_lock_acquisition(self, token_cache, redis_client):
+        """Test basic lock acquisition and release.
+
+        Verifies that after acquiring the lock, the lock key exists in Redis,
+        and after exiting the context manager the key is released. Then
+        acquires it a second time to confirm the lock is reusable.
+        """
         user_id = "test_user_lock"
+        lock_key = token_cache._get_lock_key(user_id)
 
         async with token_cache.get_refresh_lock(user_id):
-            pass
+            # Lock should be held while inside the context manager.
+            assert await redis_client.exists(lock_key) == 1
 
+        # Lock should be released after exiting.
+        assert await redis_client.exists(lock_key) == 0
+
+        # Re-acquire to confirm the lock is reusable.
         async with token_cache.get_refresh_lock(user_id):
-            pass
+            assert await redis_client.exists(lock_key) == 1
+
+        assert await redis_client.exists(lock_key) == 0
 
     @pytest.mark.asyncio
     async def test_concurrent_lock_blocking(self, token_cache):

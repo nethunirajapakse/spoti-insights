@@ -20,7 +20,7 @@ const SignUpForm = () => {
     try {
       const authUrl = await getSpotifyAuthUrl();
       if (authUrl) {
-        window.location.href = authUrl;
+        globalThis.location.href = authUrl;
       } else {
         alert("No auth URL returned.");
         setIsLoading(false);

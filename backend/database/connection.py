@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+
 def str2bool(value):
     return str(value).lower() in ("1", "true", "yes", "on")
+
 
 SQLALCHEMY_ECHO = str2bool(os.getenv("SQLALCHEMY_ECHO", "False"))
 
@@ -32,23 +34,27 @@ engine = create_engine(
     pool_recycle=POOL_RECYCLE,
 )
 
+
 @event.listens_for(engine, "connect")
 def receive_connect(dbapi_conn, connection_record):
     logger.debug("Database connection established")
 
+
 @event.listens_for(engine, "checkout")
 def receive_checkout(dbapi_conn, connection_record, connection_proxy):
-    logger.debug(f"Connection checked out from pool. Pool status: {engine.pool.status()}")
+    logger.debug("Connection checked out from pool. Pool status: %s", engine.pool.status())
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
-        logger.error(f"Database session error: {str(e)}")
+    except Exception:
+        logger.exception("Database session error")
         db.rollback()
         raise
     finally:

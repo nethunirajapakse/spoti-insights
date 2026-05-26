@@ -1,16 +1,22 @@
 """
 Health check endpoints for monitoring application and Redis status.
 """
+from typing import Annotated
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 import redis.asyncio as redis
-from backend.database.redis import get_redis, RedisTokenCache
-from backend.database.connection import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-import logging
+
+from backend.database.redis import get_redis, RedisTokenCache
+from backend.database.connection import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])
+
+DbSession = Annotated[Session, Depends(get_db)]
+RedisClient = Annotated[redis.Redis | None, Depends(get_redis)]
 
 
 @router.get("/")
@@ -23,7 +29,7 @@ async def health_check():
 
 
 @router.get("/redis")
-async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redis)):
+async def redis_health_check(redis_client: RedisClient):
     if not redis_client:
         return {
             "status": "degraded",
@@ -38,7 +44,7 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
         stats = await cache.get_cache_stats()
         return {"status": "healthy", "redis": "connected", "stats": stats}
     except Exception:
-        logger.error("Redis health check failed", exc_info=True)
+        logger.exception("Redis health check failed")
         return {
             "status": "degraded",
             "redis": "unavailable",
@@ -47,7 +53,7 @@ async def redis_health_check(redis_client: redis.Redis | None = Depends(get_redi
 
 
 @router.get("/redis/stats")
-async def redis_stats(redis_client: redis.Redis | None = Depends(get_redis)):
+async def redis_stats(redis_client: RedisClient):
     """Detailed Redis stats including token count. Slower due to full key scan."""
     if not redis_client:
         return {"status": "degraded", "redis": "unavailable"}
@@ -56,14 +62,14 @@ async def redis_stats(redis_client: redis.Redis | None = Depends(get_redis)):
         stats = await cache.get_cache_stats(include_token_count=True)
         return {"status": "healthy", "redis": "connected", "stats": stats}
     except Exception:
-        logger.error("Redis stats check failed", exc_info=True)
+        logger.exception("Redis stats check failed")
         return {"status": "degraded", "redis": "unavailable"}
 
 
 @router.get("/full")
 async def full_health_check(
-    db: Session = Depends(get_db),
-    redis_client: redis.Redis | None = Depends(get_redis)
+    db: DbSession,
+    redis_client: RedisClient,
 ):
     health_status = {"status": "healthy", "checks": {}}
 
@@ -92,7 +98,7 @@ async def full_health_check(
 
 
 @router.get("/database")
-async def database_health_check(db: Session = Depends(get_db)):
+async def database_health_check(db: DbSession):
     """Check database connectivity."""
     try:
         db.execute(text("SELECT 1"))
@@ -101,7 +107,7 @@ async def database_health_check(db: Session = Depends(get_db)):
             "database": "connected"
         }
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
+        logger.exception("Database health check failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Database unavailable: {str(e)}"

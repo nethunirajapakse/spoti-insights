@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 MEMORY_STORAGE_URI = "memory://"
 
+
 def _rate_limit_key_func(request: Request):
     """
     Key function for rate limiting.
@@ -25,6 +26,7 @@ def _rate_limit_key_func(request: Request):
         logger.debug("Redis unavailable for rate limiting; using fallback storage with client IP key.")
     return get_remote_address(request)
 
+
 limiter = Limiter(
     key_func=_rate_limit_key_func,
     storage_uri=settings.redis_url.replace("localhost", "127.0.0.1") if settings.redis_url else MEMORY_STORAGE_URI,
@@ -34,7 +36,13 @@ limiter = Limiter(
     swallow_errors=True
 )
 
-def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+
+def rate_limit_handler(_request: Request, _exc: RateLimitExceeded):
+    """
+    Handler signature is fixed by slowapi/FastAPI: both `request` and `exc`
+    must be accepted even though this handler doesn't use them. Prefixing
+    with `_` documents that and silences the unused-parameter warning.
+    """
     return JSONResponse(
         status_code=429,
         content={"error": "rate_limit_exceeded", "message": "Too many requests."}
