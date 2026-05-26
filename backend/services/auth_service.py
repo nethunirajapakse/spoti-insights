@@ -1,70 +1,124 @@
 from sqlalchemy.orm import Session
-from backend.auth import spotify_auth
-from backend.services import user_service
-from backend.schemas.user import UserCreate, UserResponse
+from backend.services import spotify_auth_service, user_service
+from backend.schemas.user import UserCreate
+from backend.core.jwt_utils import create_access_token, create_refresh_token, decode_refresh_token
 from typing import Dict, Any
-from backend.exceptions import (
+from backend.exceptions.custom_exceptions import (
     AuthorizationCodeMissingError,
     SpotifyTokensError,
     SpotifyUserIDMissingError,
-    UserNotFoundError,
-    RefreshTokenMissingError
+    RefreshTokenMissingError,
 )
+from fastapi import HTTPException
+import logging
 
-async def handle_spotify_callback(code: str, db: Session) -> UserResponse:
+logger = logging.getLogger(__name__)
+
+
+async def handle_spotify_callback(code: str, db: Session):
     """
-    Handles the Spotify authentication callback, exchanges code for tokens,
-    fetches user profile, and creates or updates the user in the database.
+    Handle Spotify OAuth callback and create/update user.
+    State validation is done in the router before this function is called.
+    Returns (jwt_access_token, jwt_refresh_token).
     """
     if not code:
         raise AuthorizationCodeMissingError()
 
-    token_info: Dict[str, Any] = await spotify_auth.get_spotify_tokens(code)
-    access_token = token_info.get("access_token")
-    refresh_token = token_info.get("refresh_token")
+    # Exchange code for Spotify tokens
+    token_info: Dict[str, Any] = await spotify_auth_service.get_spotify_tokens(code)
+    spotify_access_token = token_info.get("access_token")
+    spotify_refresh_token = token_info.get("refresh_token")
 
-    if not access_token or not refresh_token:
+    if not spotify_access_token or not spotify_refresh_token:
         raise SpotifyTokensError()
 
-    spotify_user_profile: Dict[str, Any] = await spotify_auth.get_spotify_user_profile(access_token)
-    spotify_id = spotify_user_profile.get("id")
-    display_name = spotify_user_profile.get("display_name")
-    email = spotify_user_profile.get("email")
+    # Fetch Spotify profile
+    profile: Dict[str, Any] = await spotify_auth_service.get_spotify_user_profile(spotify_access_token)
+    spotify_id = profile.get("id")
+    display_name = profile.get("display_name")
+    email = profile.get("email")
 
     if not spotify_id:
         raise SpotifyUserIDMissingError()
 
-    try:
-        db_user = user_service.get_user_by_spotify_id(db, spotify_id)
-        updated_user = user_service.update_user_login_and_token(
-            db, spotify_id, refresh_token, display_name, email
+    existing_user = user_service.get_user_by_spotify_id_or_none(db, spotify_id)
+    if existing_user:
+        db_user = user_service.update_user_login_and_token_from_instance(
+            db, existing_user, spotify_refresh_token, display_name, email
         )
-        return UserResponse.from_orm(updated_user)
-    except UserNotFoundError:
-        new_user_data = UserCreate(
+    else:
+        new_user = UserCreate(
             spotify_id=spotify_id,
             display_name=display_name,
             email=email,
-            refresh_token=refresh_token
+            spotify_refresh_token=spotify_refresh_token,
         )
-        created_user = user_service.create_user(db, new_user_data)
-        return UserResponse.from_orm(created_user)
+        db_user = user_service.create_user(db, new_user)
+
+    # Issue our own JWTs — both carry a "type" and "jti" claim so they can
+    # never be used interchangeably and can be individually revoked.
+    token_payload = {"sub": db_user.spotify_id, "user_id": db_user.id}
+    jwt_token = create_access_token(token_payload)
+    app_refresh_token = create_refresh_token(token_payload)
+
+    return jwt_token, app_refresh_token
 
 
 async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dict[str, Any]:
     """
-    Refreshes the Spotify access token for a given user.
-    Raises UserNotFoundError or RefreshTokenMissingError on failure.
+    Refresh Spotify access token using the stored (encrypted) refresh token.
+    Used when making Spotify API calls, not for refreshing our own JWTs.
     """
     db_user = user_service.get_user_by_spotify_id(db, spotify_id)
 
-    if not db_user.refresh_token:
+    if not db_user.spotify_refresh_token:
         raise RefreshTokenMissingError()
 
-    new_tokens = await spotify_auth.refresh_spotify_token(db_user.refresh_token)
+    decrypted_token = user_service.get_decrypted_refresh_token(db_user)
+    new_tokens = await spotify_auth_service.refresh_spotify_token(decrypted_token)
 
-    # Optionally update the refresh token internally if Spotify provides a new one
-    if "refresh_token" in new_tokens and new_tokens["refresh_token"] != db_user.refresh_token:
+    if "refresh_token" in new_tokens:
         user_service.update_user_refresh_token(db, spotify_id, new_tokens["refresh_token"])
 
     return new_tokens
+
+
+async def refresh_access_token(refresh_token: str) -> dict:  # NOSONAR
+    """
+    Validates our application refresh token, issues a new access token,
+    and rotates the refresh token.
+
+    Note: This function is kept 'async' to maintain API consistency 
+    with sibling service functions called from async routes, even 
+    though it currently performs only synchronous operations.
+    """
+    try:
+        payload = decode_refresh_token(refresh_token)
+
+        spotify_id = payload.get("sub")
+        user_id = payload.get("user_id")
+        old_jti = payload.get("jti")
+        old_exp = payload.get("exp", 0)
+
+        if not spotify_id or not user_id or not old_jti:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token payload: missing required claims",
+            )
+
+        token_payload = {"sub": spotify_id, "user_id": user_id}
+        new_access_token = create_access_token(token_payload)
+        new_refresh_token = create_refresh_token(token_payload)
+
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "old_refresh_jti": old_jti,
+            "old_refresh_exp": old_exp,
+        }
+
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unexpected error refreshing access token")
+        raise HTTPException(status_code=500, detail="Internal server error")

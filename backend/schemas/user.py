@@ -8,11 +8,12 @@ class UserBase(BaseModel):
     email: Optional[str]
 
 class UserCreate(UserBase):
-    refresh_token: str
+    spotify_refresh_token: str
 
 class UserResponse(UserBase):
     id: int
     last_login: Optional[datetime]
+    token: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -30,3 +31,13 @@ class SpotifyUser(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     spotify_id: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+
+    class Config:
+        from_attributes = True
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
