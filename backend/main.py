@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from backend.routers import auth, user, analytics, health
+from backend.routers import auth, user, analytics, health, deep_analytics
 from backend.middleware.cors import configure_middleware
 from backend.middleware.logging_middleware import RequestLoggingMiddleware
 from backend.middleware.error_handler import (
@@ -22,6 +22,8 @@ from backend.core.config import settings, OPENAPI_TAGS, SWAGGER_UI_PARAMETERS
 from backend.core.rate_limiter import limiter, rate_limit_handler
 from backend.services import spotify_api_service
 from backend.utils.openapi import customize_openapi
+from backend.jobs.spotify_sync import start_scheduler
+
 
 class RedisOutageFilter(logging.Filter):
     """
@@ -33,12 +35,12 @@ class RedisOutageFilter(logging.Filter):
             "Failed to rate limit",
             "Error 10061 connecting",
             "target machine actively refused it",
-            "ConnectionRefusedError"
+            "ConnectionRefusedError",
         ]
         msg = record.getMessage()
         return not any(noisy_msg in msg for noisy_msg in noisy_messages)
 
-# Configure logging based on environment
+
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -47,29 +49,42 @@ logging.basicConfig(
         logging.StreamHandler(),
     ],
 )
-
 logging.getLogger("slowapi").addFilter(RedisOutageFilter())
 logging.getLogger("limits").addFilter(RedisOutageFilter())
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    spotify_api_service.init_spotify_client()
-    logger.info("Spotify HTTP client initialized.")
-    logger.info("Running in %s mode", settings.environment)
+    scheduler = None
+    try:
+        spotify_api_service.init_spotify_client()
+        logger.info("Spotify HTTP client initialized.")
+        logger.info("Running in %s mode", settings.environment)
 
-    yield
+        try:
+            scheduler = start_scheduler()
+        except Exception:
+            logger.exception("Failed to start sync scheduler; continuing without it.")
 
-    await spotify_api_service.close_spotify_client()
-    logger.info("Spotify HTTP client closed.")
+        yield
+    finally:
+        if scheduler is not None:
+            try:
+                scheduler.shutdown()
+            except Exception:
+                logger.exception("Error shutting down scheduler")
+        try:
+            await spotify_api_service.close_spotify_client()
+            logger.info("Spotify HTTP client closed.")
+        except Exception:
+            logger.exception("Error closing Spotify HTTP client")
 
 
 def create_app() -> FastAPI:
     """Application factory pattern for creating FastAPI instance."""
-    
-    # Initialize FastAPI app with OpenAPI documentation and exception handlers
     app = FastAPI(
         title=settings.app_name,
         description=settings.app_description,
@@ -91,25 +106,20 @@ def create_app() -> FastAPI:
         },
     )
 
-    # Rate limiting
     app.state.limiter = limiter
 
-    # Middleware (executed in reverse order)
     configure_middleware(app)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(SlowAPIMiddleware)
 
-    # Routers
     app.include_router(auth.router)
     app.include_router(user.router)
     app.include_router(analytics.router)
     app.include_router(health.router)
-    
-    # Custom OpenAPI schema
-    app.openapi = lambda: customize_openapi(app)
+    app.include_router(deep_analytics.router)
 
+    app.openapi = lambda: customize_openapi(app)
     return app
 
 
-# Create application instance
 app = create_app()

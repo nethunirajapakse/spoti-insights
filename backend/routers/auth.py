@@ -1,6 +1,7 @@
 import secrets
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -19,6 +20,11 @@ from backend.core.jwt_utils import decode_refresh_token
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/public/auth", tags=["Authentication"])
+
+# Typed dependency aliases — used everywhere a route needs one of these.
+DbSession = Annotated[Session, Depends(get_db)]
+RedisClient = Annotated[object, Depends(get_redis)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.get("/spotify/login")
@@ -52,7 +58,7 @@ async def spotify_callback(
     request: Request,
     code: str,
     state: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     stored_state = request.cookies.get("oauth_state")
     if not stored_state:
@@ -66,11 +72,11 @@ async def spotify_callback(
         access_token, refresh_token = await auth_service.handle_spotify_callback(code, db)
     except (SpotifyTokensError, SpotifyUserIDMissingError) as e:
         # Spotify rejected the code or returned an incomplete profile — user-facing
-        logger.warning(f"Spotify auth rejected: {str(e)}")
+        logger.warning("Spotify auth rejected: %s", e)
         return RedirectResponse(url=f"{settings.frontend_url}/login?error=spotify_auth_failed")
-    except Exception as e:
+    except Exception:
         # DB down, encryption error, etc. — server fault
-        logger.error(f"Internal error during Spotify callback: {str(e)}", exc_info=True)
+        logger.exception("Internal error during Spotify callback")
         return RedirectResponse(url=f"{settings.frontend_url}/login?error=server_error")
 
     redirect = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
@@ -95,7 +101,7 @@ async def spotify_callback(
 async def refresh_token(
     request: Request,
     response: Response,
-    redis_client=Depends(get_redis),
+    redis_client: RedisClient,
 ):
     """
     Validates the refresh token, issues a new access token, and rotates
@@ -124,8 +130,8 @@ async def refresh_token(
         new_tokens = await auth_service.refresh_access_token(refresh_token_value)
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Token refresh error: {str(e)}")
+    except Exception:
+        logger.exception("Token refresh error")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
@@ -138,7 +144,7 @@ async def refresh_token(
     # there is no second decode here and no fallback failure path needed.
     denylist = JWTDenylist(redis_client)
     if old_refresh_jti:
-        remaining_ttl = max(1, int(old_refresh_exp - datetime.now(timezone.utc).timestamp()))
+        remaining_ttl = max(1, int(old_refresh_exp - datetime.now(UTC).timestamp()))
         await denylist.add(old_refresh_jti, remaining_ttl)
 
     cookie_config = {
@@ -180,8 +186,8 @@ async def refresh_token(
 async def logout(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    redis_client=Depends(get_redis),
+    current_user: CurrentUser,
+    redis_client: RedisClient,
 ):
     """
     Logs the user out by:
@@ -200,7 +206,7 @@ async def logout(
         jti = access_payload.get("jti")
         exp = access_payload.get("exp", 0)
         if jti:
-            remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
+            remaining_ttl = max(1, int(exp - datetime.now(UTC).timestamp()))
             await denylist.add(jti, remaining_ttl)
             # truncate jti in logs — full UUID can correlate sessions;
             # first 8 chars is enough for debugging.
@@ -219,7 +225,7 @@ async def logout(
             jti = payload.get("jti")
             exp = payload.get("exp", 0)
             if jti:
-                remaining_ttl = max(1, int(exp - datetime.now(timezone.utc).timestamp()))
+                remaining_ttl = max(1, int(exp - datetime.now(UTC).timestamp()))
                 await denylist.add(jti, remaining_ttl)
                 logger.info(
                     "Refresh token denylisted for user %s (jti=%.8s…)",
@@ -234,8 +240,8 @@ async def logout(
         if redis_client:
             cache = RedisTokenCache(redis_client)
             await cache.invalidate_token(current_user.spotify_id)
-    except Exception as e:
-        logger.error("Logout cache error (non-fatal): %s", e)
+    except Exception:
+        logger.exception("Logout cache error (non-fatal)")
 
     response.delete_cookie("access_token", path="/", domain=settings.cookie_domain)
     response.delete_cookie("refresh_token", path="/", domain=settings.cookie_domain)
@@ -247,7 +253,7 @@ async def logout(
 @limiter.limit("30/minute")
 async def verify_token(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
 ):
     """Verify if the current access token is valid."""
     return {

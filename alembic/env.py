@@ -4,6 +4,9 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 from dotenv import load_dotenv
+# Import models so SQLAlchemy registers them on Base.metadata for Alembic autogenerate
+from backend.models.analytics import ListeningHistory, SyncState  # noqa: F401
+from backend.models.user import User  # noqa: F401
 
 # Load .env so DATABASE_URL is available
 load_dotenv()

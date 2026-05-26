@@ -2,7 +2,7 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 
 from backend.exceptions.custom_exceptions import (
@@ -14,7 +14,8 @@ from backend.schemas.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
-async def spotify_auth_error_handler(request: Request, exc: SpotifyAuthError):
+
+def spotify_auth_error_handler(request: Request, exc: SpotifyAuthError):
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content=ErrorResponse(
@@ -22,11 +23,12 @@ async def spotify_auth_error_handler(request: Request, exc: SpotifyAuthError):
             detail=str(exc),
             status_code=401,
             path=str(request.url),
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(UTC).isoformat()
         ).dict()
     )
 
-async def user_not_found_handler(request: Request, exc: UserNotFoundError):
+
+def user_not_found_handler(request: Request, exc: UserNotFoundError):
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content=ErrorResponse(
@@ -34,11 +36,12 @@ async def user_not_found_handler(request: Request, exc: UserNotFoundError):
             detail=str(exc),
             status_code=404,
             path=str(request.url),
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(UTC).isoformat()
         ).dict()
     )
 
-async def validation_error_handler(request: Request, exc: RequestValidationError):
+
+def validation_error_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -46,12 +49,19 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
             "detail": "Invalid request data",
             "status_code": 422,
             "errors": exc.errors(),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
     )
 
-async def database_error_handler(request: Request, exc: SQLAlchemyError):
-    logger.error(f"Database error: {str(exc)}")
+
+def database_error_handler(request: Request, _exc: SQLAlchemyError):
+    """
+    Handler signature is fixed by FastAPI: both `request` and the exception
+    parameter must be accepted. We no longer reference the exception in the
+    response body (the stack trace is captured by logger.exception below),
+    so the parameter is prefixed with `_` to document it as intentionally unused.
+    """
+    logger.exception("Database error")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
@@ -59,12 +69,16 @@ async def database_error_handler(request: Request, exc: SQLAlchemyError):
             detail="An error occurred while accessing the database",
             status_code=500,
             path=str(request.url),
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(UTC).isoformat()
         ).dict()
     )
 
-async def generic_error_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+
+def generic_error_handler(request: Request, _exc: Exception):
+    """
+    See note on database_error_handler — same rationale for the `_exc` name.
+    """
+    logger.exception("Unhandled exception")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
@@ -72,6 +86,6 @@ async def generic_error_handler(request: Request, exc: Exception):
             detail="An unexpected error occurred",
             status_code=500,
             path=str(request.url),
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(UTC).isoformat()
         ).dict()
     )
