@@ -83,16 +83,24 @@ async def refresh_user_spotify_access_token(db: Session, spotify_id: str) -> Dic
     return new_tokens
 
 
-async def refresh_access_token(refresh_token: str) -> dict:
+async def refresh_access_token(refresh_token: str) -> dict:  # NOSONAR: kept async for API consistency with sibling service functions called from async routes
     """
     Validates our application refresh token, issues a new access token,
     and rotates the refresh token (issues a new one, returns the old jti
     so the caller can denylist it).
 
+    Note: this function does not currently await anything internally, but
+    is kept `async` because (1) all callers are async FastAPI routes that
+    already `await` it, (2) the sibling service functions in this module
+    are async, and (3) future additions like an audit-log write or a Redis
+    denylist check would re-introduce awaitable calls. Changing the
+    signature now would force a churn on call sites for no benefit.
+
     Returns a dict with:
       - access_token:      newly issued access token
       - refresh_token:     newly issued refresh token (rotation)
       - old_refresh_jti:   jti of the consumed refresh token (for denylisting)
+      - old_refresh_exp:   exp claim of the consumed refresh token
     """
     try:
         payload = decode_refresh_token(refresh_token)

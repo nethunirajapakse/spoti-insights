@@ -240,8 +240,8 @@ async def logout(
         if redis_client:
             cache = RedisTokenCache(redis_client)
             await cache.invalidate_token(current_user.spotify_id)
-    except Exception as e:
-        logger.error("Logout cache error (non-fatal): %s", e)
+    except Exception:
+        logger.exception("Logout cache error (non-fatal)")
 
     response.delete_cookie("access_token", path="/", domain=settings.cookie_domain)
     response.delete_cookie("refresh_token", path="/", domain=settings.cookie_domain)

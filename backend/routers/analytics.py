@@ -26,6 +26,44 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 DbSession = Annotated[Session, Depends(get_db)]
 RedisClient = Annotated[redis.Redis | None, Depends(get_redis)]
 
+# Typed Query aliases — Sonar's rule applies to Query(...) defaults too,
+# not only Depends(...). Wrapping them in Annotated[] silences the warning
+# and keeps the route signatures readable.
+TimeRangeQuery = Annotated[
+    SpotifyTimeRange,
+    Query(
+        description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"
+    ),
+]
+EntityLimitQuery = Annotated[
+    int,
+    Query(
+        ge=1,
+        le=MAX_SPOTIFY_LIMIT,
+        description=f"The number of entities to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}.",
+    ),
+]
+PlaylistLimitQuery = Annotated[
+    int,
+    Query(
+        ge=1,
+        le=MAX_SPOTIFY_LIMIT,
+        description=f"The number of playlists to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}.",
+    ),
+]
+TrackLimitQuery = Annotated[
+    int,
+    Query(
+        ge=1,
+        le=MAX_SPOTIFY_LIMIT,
+        description=f"The number of tracks to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}.",
+    ),
+]
+OffsetQuery = Annotated[
+    int,
+    Query(ge=0, description="The index of the first playlist to return."),
+]
+
 
 async def get_spotify_access_token_for_authenticated_user(
     current_user: CurrentUser,
@@ -91,16 +129,8 @@ SpotifyAccessToken = Annotated[str, Depends(get_spotify_access_token_for_authent
 async def get_user_top_items_endpoint(
     item_type: SpotifyTopItemType,
     access_token: SpotifyAccessToken,
-    time_range: SpotifyTimeRange = Query(
-        SpotifyTimeRange.MEDIUM_TERM,
-        description="Over what time frame the data is calculated. Valid values: long_term, medium_term, short_term"
-    ),
-    limit: int = Query(
-        DEFAULT_SPOTIFY_LIMIT,
-        ge=1,
-        le=MAX_SPOTIFY_LIMIT,
-        description=f"The number of entities to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."
-    ),
+    time_range: TimeRangeQuery = SpotifyTimeRange.MEDIUM_TERM,
+    limit: EntityLimitQuery = DEFAULT_SPOTIFY_LIMIT,
 ) -> Dict[str, Any]:
     """
     Retrieves the authenticated user's top artists or tracks from Spotify.
@@ -131,17 +161,8 @@ async def get_user_top_items_endpoint(
 @router.get("/playlists", summary="Get a user's playlists")
 async def get_user_playlists_endpoint(
     access_token: SpotifyAccessToken,
-    limit: int = Query(
-        DEFAULT_SPOTIFY_LIMIT,
-        ge=1,
-        le=MAX_SPOTIFY_LIMIT,
-        description=f"The number of playlists to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-        description="The index of the first playlist to return."
-    ),
+    limit: PlaylistLimitQuery = DEFAULT_SPOTIFY_LIMIT,
+    offset: OffsetQuery = 0,
 ) -> Dict[str, Any]:
     """
     Retrieves the authenticated user's playlists from Spotify.
@@ -165,12 +186,7 @@ async def get_user_playlists_endpoint(
 @router.get("/recently-played", summary="Get a user's recently played tracks")
 async def get_user_recently_played_endpoint(
     access_token: SpotifyAccessToken,
-    limit: int = Query(
-        DEFAULT_SPOTIFY_LIMIT,
-        ge=1,
-        le=MAX_SPOTIFY_LIMIT,
-        description=f"The number of tracks to return. Default: {DEFAULT_SPOTIFY_LIMIT}. Minimum: 1. Maximum: {MAX_SPOTIFY_LIMIT}."
-    ),
+    limit: TrackLimitQuery = DEFAULT_SPOTIFY_LIMIT,
 ) -> Dict[str, Any]:
     """
     Retrieves the authenticated user's recently played tracks from Spotify.

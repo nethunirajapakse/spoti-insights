@@ -11,15 +11,27 @@ if not ENCRYPTION_KEY:
 
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
-def encrypt_token(token: str) -> str:
-    """Encrypts a token and returns base64-encoded encrypted value."""
+
+def encrypt_token(token: str) -> str | None:
+    """
+    Encrypts a token and returns base64-encoded encrypted value.
+
+    Returns None if the input token is falsy (empty string or None) so callers
+    can pass through unset values without special-casing them here.
+    """
     if not token:
         return None
     encrypted = cipher_suite.encrypt(token.encode())
     return base64.urlsafe_b64encode(encrypted).decode()
 
-def decrypt_token(encrypted_token: str) -> str:
-    """Decrypts a base64-encoded encrypted token."""
+
+def decrypt_token(encrypted_token: str) -> str | None:
+    """
+    Decrypts a base64-encoded encrypted token.
+
+    Returns None if the input is falsy, mirroring encrypt_token's behaviour
+    so a round-trip on an unset value is a no-op.
+    """
     if not encrypted_token:
         return None
     decoded = base64.urlsafe_b64decode(encrypted_token.encode())

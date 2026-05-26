@@ -20,13 +20,17 @@ router = APIRouter(prefix="/deep-analytics", tags=["Deep Analytics"])
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
+# Query() params wrapped in Annotated to satisfy Sonar's FastAPI rule.
+PageQuery = Annotated[int, Query(ge=1)]
+HistoryLimitQuery = Annotated[int, Query(ge=1, le=100)]
+
 
 @router.get("/history", response_model=HistoryResponse)
 def get_history(
     user: CurrentUser,
     db: DbSession,
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    page: PageQuery = 1,
+    limit: HistoryLimitQuery = 20,
 ):
     offset = (page - 1) * limit
 

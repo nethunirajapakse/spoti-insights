@@ -54,7 +54,13 @@ def validation_error_handler(request: Request, exc: RequestValidationError):
     )
 
 
-def database_error_handler(request: Request, exc: SQLAlchemyError):
+def database_error_handler(request: Request, _exc: SQLAlchemyError):
+    """
+    Handler signature is fixed by FastAPI: both `request` and the exception
+    parameter must be accepted. We no longer reference the exception in the
+    response body (the stack trace is captured by logger.exception below),
+    so the parameter is prefixed with `_` to document it as intentionally unused.
+    """
     logger.exception("Database error")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -68,7 +74,10 @@ def database_error_handler(request: Request, exc: SQLAlchemyError):
     )
 
 
-def generic_error_handler(request: Request, exc: Exception):
+def generic_error_handler(request: Request, _exc: Exception):
+    """
+    See note on database_error_handler — same rationale for the `_exc` name.
+    """
     logger.exception("Unhandled exception")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
