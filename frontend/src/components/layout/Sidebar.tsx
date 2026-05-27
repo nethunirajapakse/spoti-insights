@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Music2,
   Settings,
-  Sparkles,
   HelpCircle,
   Menu,
   X,
@@ -111,17 +110,6 @@ const Sidebar = () => {
             </NavLink>
           ))}
         </nav>
-
-        {/* Action Section */}
-        {/* <div className="p-4 px-6">
-          <button
-            type="button"
-            className="w-full bg-primary-container hover:bg-primary transition-colors text-on-primary-container font-bold py-3 rounded-full flex items-center justify-center gap-2 text-sm shadow-lg shadow-primary/10 active:scale-95 duration-200"
-          >
-            <Sparkles size={16} />
-            Generate Report
-          </button>
-        </div> */}
 
         {/* Footer Navigation */}
         <div className="p-4 border-t border-white/5 space-y-1">

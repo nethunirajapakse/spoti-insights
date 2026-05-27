@@ -23,7 +23,14 @@ const TopNavbar = () => {
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target;
+      // Narrow with `instanceof Node` instead of asserting — Sonar flagged the
+      // `as Node` cast as unnecessary, and this is the type-safe equivalent.
+      if (
+        target instanceof Node &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setIsMenuOpen(false);
       }
     };
@@ -46,6 +53,7 @@ const TopNavbar = () => {
       {/* User Profile Trigger */}
       <div className="relative" ref={menuRef}>
         <button
+          type="button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="flex items-center gap-2 p-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all focus:outline-none group"
         >
@@ -88,7 +96,6 @@ const TopNavbar = () => {
 
             {/* Action Buttons Stack */}
             <div className="flex flex-col gap-2">
-              {/* The Sign Out Button */}
               <Button
                 label="Sign out"
                 variant="secondary"
@@ -97,7 +104,6 @@ const TopNavbar = () => {
                   setIsMenuOpen(false);
                   handleLogout();
                 }}
-                // Custom overrides to force the clean, uncolored pill-button layout with a clean border
                 className="!w-full !bg-transparent hover:!bg-red-500/10 !text-zinc-300 hover:!text-red-400 !border !border-white/10 hover:!border-red-500/20 !shadow-none !py-3 !px-4 !text-sm !font-medium transition-colors"
               />
             </div>

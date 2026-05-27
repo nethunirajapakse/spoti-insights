@@ -1,5 +1,5 @@
 import { Music2, Disc3, Clock, Users } from "lucide-react";
-import type { OverviewResponse } from "@/api/analytics";
+import type { OverviewResponse, TopEntity } from "@/api/analytics";
 
 interface StatRowProps {
   data?: OverviewResponse;
@@ -9,6 +9,25 @@ interface StatRowProps {
 const SkeletonCard = () => (
   <div className="glass-card p-6 rounded-2xl h-40 animate-pulse" />
 );
+
+// Avatar rendering pulled out so the JSX doesn't need a nested ternary.
+const TopArtistAvatar = ({ artist }: { artist: TopEntity | null }) => {
+  if (!artist) return null;
+  if (artist.image_url) {
+    return (
+      <img
+        src={artist.image_url}
+        alt={artist.name}
+        className="w-14 h-14 rounded-full object-cover border-2 border-primary/20 flex-shrink-0"
+      />
+    );
+  }
+  return (
+    <div className="w-14 h-14 rounded-full border-2 border-primary/20 bg-white/5 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
+      {artist.name.charAt(0).toUpperCase()}
+    </div>
+  );
+};
 
 export const StatRow = ({ data, isLoading }: StatRowProps) => {
   if (isLoading || !data) {
@@ -35,17 +54,7 @@ export const StatRow = ({ data, isLoading }: StatRowProps) => {
           <Users size={14} className="text-primary" />
         </div>
         <div className="flex items-center gap-4">
-          {top_artist?.image_url ? (
-            <img
-              src={top_artist.image_url}
-              alt={top_artist.name}
-              className="w-14 h-14 rounded-full object-cover border-2 border-primary/20 flex-shrink-0"
-            />
-          ) : top_artist ? (
-            <div className="w-14 h-14 rounded-full border-2 border-primary/20 bg-white/5 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
-              {top_artist.name.charAt(0).toUpperCase()}
-            </div>
-          ) : null}
+          <TopArtistAvatar artist={top_artist} />
           <div className="min-w-0">
             <p className="text-lg font-bold text-white leading-tight line-clamp-2">
               {top_artist?.name ?? "—"}

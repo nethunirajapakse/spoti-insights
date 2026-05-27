@@ -23,7 +23,6 @@ from backend.schemas.analytics import (
     GenreSlice,
 )
 
-# Reuse the existing analytics router's helper to fetch a fresh Spotify token.
 from backend.routers.analytics import get_spotify_access_token_for_authenticated_user
 from backend.services import spotify_api_service
 from backend.services.spotify_api_service import SpotifyTopItemType, SpotifyTimeRange
@@ -38,6 +37,10 @@ SpotifyAccessToken = Annotated[str, Depends(get_spotify_access_token_for_authent
 PageQuery = Annotated[int, Query(ge=1)]
 HistoryLimitQuery = Annotated[int, Query(ge=1, le=100)]
 WindowDaysQuery = Annotated[int, Query(ge=1, le=365)]
+
+# Hard upper bound enforced on the server, independent of any query value.
+# Even if a request smuggles past validation, we never loop more than this.
+MAX_TREND_DAYS = 365
 
 
 # ============================================================
@@ -124,7 +127,7 @@ def get_hourly_velocity(user: CurrentUser, db: DbSession):
 
 
 # ============================================================
-# NEW — Dashboard endpoints
+# Dashboard endpoints
 # ============================================================
 async def _fetch_artist_image(access_token: str, artist_id: str) -> str | None:
     """
@@ -136,7 +139,6 @@ async def _fetch_artist_image(access_token: str, artist_id: str) -> str | None:
             access_token, "GET", f"/artists/{artist_id}"
         )
         images = artist_data.get("images") or []
-        # Prefer the medium (320x320) image; fall back to first available.
         for img in images:
             if img.get("height") == 320:
                 return img.get("url")
@@ -158,11 +160,15 @@ async def get_overview(
     over the last N days. Top artist is enriched with image URL via one
     extra Spotify call — graceful degradation if Spotify is slow/down.
     """
-    cutoff = datetime.now(UTC) - timedelta(days=days)
+    # Defensive re-clamp: Pydantic already validates the range, but Sonar
+    # treats raw query values as tainted. Recomputing into a local guards
+    # against any future change that loosens the validator.
+    safe_days = max(1, min(int(days), MAX_TREND_DAYS))
+
+    cutoff = datetime.now(UTC) - timedelta(days=safe_days)
     user_filter = ListeningHistory.user_id == user.spotify_id
     window_filter = ListeningHistory.played_at >= cutoff
 
-    # Totals — one query, all aggregations.
     totals = (
         db.query(
             func.count(ListeningHistory.id).label("total_tracks"),
@@ -177,7 +183,6 @@ async def get_overview(
     total_ms = int(totals.total_ms or 0)
     total_hours = round(total_ms / 3_600_000, 1)
 
-    # Top artist by play count
     top_artist_row = (
         db.query(
             ListeningHistory.artist_id,
@@ -190,7 +195,6 @@ async def get_overview(
         .first()
     )
 
-    # Top track by play count — includes album_art_url for the thumbnail.
     top_track_row = (
         db.query(
             ListeningHistory.track_id,
@@ -212,7 +216,6 @@ async def get_overview(
 
     top_artist = None
     if top_artist_row:
-        # Enrich with image — listening_history doesn't store artist photos.
         image_url = await _fetch_artist_image(access_token, top_artist_row.artist_id)
         top_artist = TopEntity(
             id=top_artist_row.artist_id,
@@ -232,7 +235,7 @@ async def get_overview(
         )
 
     return OverviewResponse(
-        window_days=days,
+        window_days=safe_days,
         total_tracks=int(totals.total_tracks or 0),
         total_hours=total_hours,
         unique_artists=int(totals.unique_artists or 0),
@@ -252,8 +255,15 @@ def get_daily_trend(
     Per-day play count and listening minutes for the last N days.
     Days with zero plays are filled in so the line chart renders smoothly.
     """
+    # Defensive re-clamp before using `days` as a loop bound. Pydantic already
+    # enforces 1 <= days <= 365 via WindowDaysQuery, but Sonar's taint analysis
+    # flags any user-controlled value reaching `range()`. Re-binding into a
+    # local int with explicit min/max satisfies the analyzer and guards against
+    # any future change to the query validator.
+    safe_days = max(1, min(int(days), MAX_TREND_DAYS))
+
     today_utc = datetime.now(UTC).date()
-    start_date = today_utc - timedelta(days=days - 1)
+    start_date = today_utc - timedelta(days=safe_days - 1)
     cutoff = datetime.combine(start_date, time.min, tzinfo=UTC)
 
     day_col = cast(ListeningHistory.played_at, Date).label("day")
@@ -276,12 +286,12 @@ def get_daily_trend(
     by_day = {r.day: (int(r.plays), int(r.ms or 0)) for r in rows}
 
     points = []
-    for offset in range(days):
+    for offset in range(safe_days):
         d = start_date + timedelta(days=offset)
         plays, ms = by_day.get(d, (0, 0))
         points.append(DailyPoint(date=d, plays=plays, minutes=ms // 60_000))
 
-    return DailyTrendResponse(days=days, points=points)
+    return DailyTrendResponse(days=safe_days, points=points)
 
 
 @router.get("/genre-distribution", response_model=GenreDistributionResponse)

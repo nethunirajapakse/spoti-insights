@@ -12,17 +12,99 @@ const OTHER_COLOR = "#3d4a3d";
 
 const CIRCUMFERENCE = 2 * Math.PI * 40; // r=40 in viewBox
 
+interface Segment {
+  name: string;
+  weight: number;
+  color: string;
+  dashArray: string;
+  dashOffset: number;
+}
+
+const LoadingState = () => (
+  <div className="flex-1 flex items-center justify-center">
+    <div className="w-40 h-40 rounded-full bg-white/[0.02] animate-pulse" />
+  </div>
+);
+
+const EmptyState = () => (
+  <div className="flex-1 flex items-center justify-center">
+    <p className="text-on-surface-variant text-sm text-center">
+      Not enough listening data yet to compute genres.
+    </p>
+  </div>
+);
+
+const DonutBody = ({
+  segments,
+  totalGenres,
+}: {
+  segments: Segment[];
+  totalGenres: number;
+}) => (
+  <div className="flex-1 flex flex-col justify-around">
+    <div className="relative w-44 h-44 mx-auto">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="transparent"
+          stroke="#ffffff"
+          strokeOpacity="0.05"
+          strokeWidth="12"
+        />
+        {segments.map((seg) => (
+          <circle
+            key={seg.name}
+            cx="50"
+            cy="50"
+            r="40"
+            fill="transparent"
+            stroke={seg.color}
+            strokeWidth="12"
+            strokeDasharray={seg.dashArray}
+            strokeDashoffset={seg.dashOffset}
+          />
+        ))}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold text-white">{totalGenres}</span>
+        <span className="text-[10px] text-outline uppercase font-bold tracking-widest">
+          Genres
+        </span>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-6">
+      {segments.map((seg) => (
+        <div key={seg.name} className="flex items-center gap-2 min-w-0">
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ background: seg.color }}
+          />
+          <span className="text-xs text-on-surface truncate">
+            {seg.name} <span className="text-outline">({seg.weight}%)</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 export const GenreDonut = ({ data, isLoading }: Props) => {
-  const segments = useMemo(() => {
+  const segments = useMemo<Segment[]>(() => {
     if (!data || data.slices.length === 0) return [];
 
     let offset = 0;
     return data.slices.map((slice, i) => {
       const length = (slice.weight / 100) * CIRCUMFERENCE;
-      const seg = {
+      const seg: Segment = {
         name: slice.name,
         weight: slice.weight,
-        color: slice.name === "Other" ? OTHER_COLOR : SLICE_COLORS[i % SLICE_COLORS.length],
+        color:
+          slice.name === "Other"
+            ? OTHER_COLOR
+            : SLICE_COLORS[i % SLICE_COLORS.length],
         dashArray: `${length} ${CIRCUMFERENCE}`,
         dashOffset: -offset,
       };
@@ -30,6 +112,13 @@ export const GenreDonut = ({ data, isLoading }: Props) => {
       return seg;
     });
   }, [data]);
+
+  // Pick the render state explicitly to avoid a nested ternary.
+  const renderBody = () => {
+    if (isLoading || !data) return <LoadingState />;
+    if (data.slices.length === 0) return <EmptyState />;
+    return <DonutBody segments={segments} totalGenres={data.total_genres} />;
+  };
 
   return (
     <div className="glass-card p-8 rounded-3xl h-[400px] flex flex-col">
@@ -39,74 +128,7 @@ export const GenreDonut = ({ data, isLoading }: Props) => {
           {data ? `From your top ${data.based_on_artists} artists` : ""}
         </p>
       </div>
-
-      {isLoading || !data ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-40 h-40 rounded-full bg-white/[0.02] animate-pulse" />
-        </div>
-      ) : data.slices.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-on-surface-variant text-sm text-center">
-            Not enough listening data yet to compute genres.
-          </p>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col justify-around">
-          <div className="relative w-44 h-44 mx-auto">
-            <svg
-              className="w-full h-full -rotate-90"
-              viewBox="0 0 100 100"
-            >
-              {/* Background ring */}
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="transparent"
-                stroke="#ffffff"
-                strokeOpacity="0.05"
-                strokeWidth="12"
-              />
-              {segments.map((seg) => (
-                <circle
-                  key={seg.name}
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="transparent"
-                  stroke={seg.color}
-                  strokeWidth="12"
-                  strokeDasharray={seg.dashArray}
-                  strokeDashoffset={seg.dashOffset}
-                />
-              ))}
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-white">
-                {data.total_genres}
-              </span>
-              <span className="text-[10px] text-outline uppercase font-bold tracking-widest">
-                Genres
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-6">
-            {segments.map((seg) => (
-              <div key={seg.name} className="flex items-center gap-2 min-w-0">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: seg.color }}
-                />
-                <span className="text-xs text-on-surface truncate">
-                  {seg.name}{" "}
-                  <span className="text-outline">({seg.weight}%)</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {renderBody()}
     </div>
   );
 };
