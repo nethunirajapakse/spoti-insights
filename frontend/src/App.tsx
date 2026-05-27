@@ -4,6 +4,7 @@ import LandingPage from "@/pages/LandingPage";
 import SignUp from "@/pages/SignUp"; 
 import Dashboard from "@/pages/Dashboard";
 import History from "@/pages/History";
+import Playlists from "@/pages/Playlists";
 import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
@@ -16,6 +17,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/history" element={<History />} />
+          <Route path="/playlists" element={<Playlists />} />
         </Route>
       </Route>
     </Routes>
