@@ -17,6 +17,7 @@ app.log
 .env
 .env.*
 !.env.example
+!.env.production
 
 # Node
 node_modules/
