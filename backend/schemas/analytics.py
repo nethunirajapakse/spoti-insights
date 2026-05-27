@@ -3,9 +3,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-# ============================================================
-# Existing schemas — keep as-is
-# ============================================================
 class ListeningHistoryItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,9 +40,6 @@ class HourlyVelocityResponse(BaseModel):
     hours: list[HourBucket]
 
 
-# ============================================================
-# NEW schemas for Dashboard endpoints
-# ============================================================
 class TopEntity(BaseModel):
     """A top artist or track derived from listening history play counts."""
     id: str

@@ -1,8 +1,5 @@
 import api from "@/api/axios";
 
-// ============================================================
-// Existing — unchanged
-// ============================================================
 export const getTopItems = async (
   time_range: string,
   limit: number,
@@ -28,9 +25,6 @@ export const getUserPlaylists = async (limit: number, offset: number) => {
   return response.data;
 };
 
-// ============================================================
-// NEW — Dashboard / Deep Analytics
-// ============================================================
 export interface TopEntity {
   id: string;
   name: string;

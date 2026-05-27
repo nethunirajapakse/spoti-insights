@@ -42,10 +42,6 @@ WindowDaysQuery = Annotated[int, Query(ge=1, le=365)]
 # Even if a request smuggles past validation, we never loop more than this.
 MAX_TREND_DAYS = 365
 
-
-# ============================================================
-# EXISTING — unchanged
-# ============================================================
 @router.get("/history", response_model=HistoryResponse)
 def get_history(
     user: CurrentUser,
@@ -126,9 +122,6 @@ def get_hourly_velocity(user: CurrentUser, db: DbSession):
     return {"hours": full}
 
 
-# ============================================================
-# Dashboard endpoints
-# ============================================================
 async def _fetch_artist_image(access_token: str, artist_id: str) -> str | None:
     """
     Fetches a single artist's image. Returns None on any failure — image
