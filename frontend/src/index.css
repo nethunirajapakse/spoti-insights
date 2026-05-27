@@ -2,9 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Single source of truth for the glass surface used across the app. */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Subtle accent glow used on hero album art / featured surfaces. */
+  .album-halo {
+    filter: drop-shadow(0 0 24px rgba(83, 224, 118, 0.25));
+  }
+}
+
 body {
   background-color: #0e150e;
-  background-image: 
+  background-image:
     radial-gradient(circle at 0% 0%, rgba(83, 224, 118, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 100% 100%, rgba(83, 224, 118, 0.05) 0%, transparent 50%);
   background-attachment: fixed;
@@ -13,26 +28,26 @@ body {
 
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 6px; /* Makes the scrollbar thinner */
-  height: 6px; /* For horizontal scrollbars */
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0e150e; /* Matches your background color */
+  background: #0e150e;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1a211a; /* Darker green for the thumb base */
+  background: #1a211a;
   border-radius: 10px;
-  border: 1px solid #53e07633; /* Very subtle green border */
+  border: 1px solid #53e07633;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #53e076; /* Bright green on hover */
-  box-shadow: 0 0 10px #53e07666; /* Glow effect */
+  background: #53e076;
+  box-shadow: 0 0 10px #53e07666;
 }
 
-/* For Firefox (different syntax) */
+/* For Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: #1a211a #0e150e;
