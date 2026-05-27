@@ -18,8 +18,11 @@ const PlaylistLibrary = () => {
 
         {isPlaylistsFetching ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-64 bg-white/5 rounded-3xl animate-pulse border border-white/5" />
+            {Array.from({ length: 6 }, (_, i) => (
+              <div
+                key={`playlist-skeleton-${i}`}
+                className="h-64 bg-white/5 rounded-3xl animate-pulse border border-white/5"
+              />
             ))}
           </div>
         ) : (
@@ -35,7 +38,8 @@ const PlaylistLibrary = () => {
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                     <a 
                       href={playlist.external_urls.spotify} 
-                      target="_blank" 
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="p-3 bg-primary rounded-full text-black hover:scale-110 transition-transform"
                     >
                       <ExternalLink size={20} />

@@ -25,6 +25,15 @@ const Dashboard = () => {
     isTopItemsFetching: isTopTracksFetching,
   } = useTopItems("tracks", "short_term", 5);
 
+  // Derive the Top Artist subValue once, instead of using a nested ternary inline.
+  const getTopArtistSubValue = () => {
+    if (isTopArtistFetching) return "";
+    if (topArtist?.genres?.[0]) return `Genre: ${topArtist.genres[0]}`;
+    if (topArtist?.popularity) return `Popularity: ${topArtist.popularity}`;
+    return "";
+  };
+  const topArtistSubValue = getTopArtistSubValue();
+
   return (
     <div className="w-full space-y-8">
       {/* Hero Section */}
@@ -48,15 +57,7 @@ const Dashboard = () => {
         <StatCard
           label="Top Artist"
           value={isTopArtistFetching ? "Loading..." : (topArtist?.name ?? "—")}
-          subValue={
-            isTopArtistFetching
-              ? ""
-              : topArtist?.genres?.[0]
-                ? `Genre: ${topArtist.genres[0]}`
-                : topArtist?.popularity
-                  ? `Popularity: ${topArtist.popularity}`
-                  : ""
-          }
+          subValue={topArtistSubValue}
           image={topArtist?.images?.[0]?.url}
         />
         <StatCard
