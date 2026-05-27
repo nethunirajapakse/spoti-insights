@@ -3,12 +3,10 @@ Health check endpoints for monitoring application and Redis status.
 """
 from typing import Annotated
 import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status
 import redis.asyncio as redis
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-
 from backend.database.redis import get_redis, RedisTokenCache
 from backend.database.connection import get_db
 
@@ -19,9 +17,9 @@ DbSession = Annotated[Session, Depends(get_db)]
 RedisClient = Annotated[redis.Redis | None, Depends(get_redis)]
 
 
-@router.get("/")
+@router.api_route("", methods=["GET", "HEAD"])
 async def health_check():
-    """Basic health check endpoint."""
+    """Basic health check endpoint. Accepts GET and HEAD (for uptime monitors)."""
     return {
         "status": "healthy",
         "service": "spotify-analytics-api"
@@ -72,7 +70,6 @@ async def full_health_check(
     redis_client: RedisClient,
 ):
     health_status = {"status": "healthy", "checks": {}}
-
     # DB Check
     try:
         db.execute(text("SELECT 1"))
@@ -80,7 +77,6 @@ async def full_health_check(
     except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["database"] = "error"
-
     # Redis Check
     try:
         if redis_client:
@@ -92,7 +88,6 @@ async def full_health_check(
     except Exception:
         health_status["status"] = "degraded"
         health_status["checks"]["redis"] = "unavailable"
-
     # Return 200 even if degraded so monitoring knows the API is ALIVE but limited
     return health_status
 
