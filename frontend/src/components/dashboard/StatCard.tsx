@@ -2,12 +2,11 @@ interface StatCardProps {
   label: string;
   value: string | number;
   subValue?: string;
-  icon?: React.ReactNode;
   image?: string;
   trend?: string;
 }
 
-export const StatCard = ({ label, value, subValue, icon, image, trend }: StatCardProps) => (
+export const StatCard = ({ label, value, subValue, image, trend }: StatCardProps) => (
   <div className="glass-card p-6 rounded-2xl flex flex-col justify-between h-40">
     <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{label}</p>
     <div className="flex items-center gap-4 mt-2">
