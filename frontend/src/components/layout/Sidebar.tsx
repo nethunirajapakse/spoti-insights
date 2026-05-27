@@ -4,7 +4,8 @@ import {
   LayoutDashboard, 
   Music2, 
   Settings, 
-  Sparkles
+  Sparkles,
+  HelpCircle
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -56,6 +57,15 @@ const Sidebar = () => {
 
       {/* Footer Navigation */}
       <div className="p-4 border-t border-white/5 space-y-1">
+        {/* Help Link Added Here */}
+        <NavLink 
+          to="/help" 
+          className="flex items-center gap-4 px-4 py-2 text-outline hover:text-white transition-colors text-sm"
+        >
+          <HelpCircle size={18} />
+          Help & Support
+        </NavLink>
+
         <NavLink 
           to="/settings" 
           className="flex items-center gap-4 px-4 py-2 text-outline hover:text-white transition-colors text-sm"
