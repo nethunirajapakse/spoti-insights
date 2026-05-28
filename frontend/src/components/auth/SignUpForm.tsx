@@ -48,12 +48,13 @@ const SignUpForm = () => {
         Icon={SpotifyIcon}
         onClick={handleSpotifyLogin}
         isLoading={isLoading}
-        className="!w-full !bg-[#53e076] hover:!bg-[#46bd63] !text-black !font-bold !py-4.5 !text-base !rounded-full shadow-lg shadow-[#53e076]/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+        className="!w-full !bg-[#53e076]/5 hover:!bg-[#53e076]/10 !text-zinc-200 hover:!text-[#53e076] !border !border-[#53e076]/20 hover:!border-[#53e076]/40 !py-3.5 !px-4 !text-sm !font-semibold !rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99]"
       />
 
       <footer className="mt-8 pt-4 border-t border-white/5 w-full">
         <p className="text-[11px] text-zinc-500 text-center font-medium leading-normal px-2">
-          We only access your listening data. <br />No posts, no messages, ever.
+          We only access your listening data. <br />
+          No posts, no messages, ever.
         </p>
       </footer>
     </div>

@@ -95,6 +95,39 @@ const ListeningHistory = () => {
     });
   };
 
+  const renderTableBody = () => {
+    if (isInitialLoading) {
+      return (
+        <tr>
+          <td
+            colSpan={4}
+            className="p-20 text-center animate-pulse text-outline text-xs uppercase tracking-widest"
+          >
+            Loading your listening history…
+          </td>
+        </tr>
+      );
+    }
+
+    if (historyItems.length === 0) {
+      return (
+        <tr>
+          <td
+            colSpan={4}
+            className="p-20 text-center text-outline text-sm"
+          >
+            No listening history yet. Play some music on Spotify and it
+            will sync here.
+          </td>
+        </tr>
+      );
+    }
+
+    return historyItems.map((item) => (
+      <HistoryRow key={`${item.id}`} item={item} />
+    ));
+  };
+
   return (
     <div className="grid grid-cols-12 gap-6 lg:gap-8 items-start relative">
       {/* Primary Table Segment */}
@@ -112,30 +145,7 @@ const ListeningHistory = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {isInitialLoading ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="p-20 text-center animate-pulse text-outline text-xs uppercase tracking-widest"
-                  >
-                    Loading your listening history…
-                  </td>
-                </tr>
-              ) : historyItems.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="p-20 text-center text-outline text-sm"
-                  >
-                    No listening history yet. Play some music on Spotify and it
-                    will sync here.
-                  </td>
-                </tr>
-              ) : (
-                historyItems.map((item) => (
-                  <HistoryRow key={`${item.id}`} item={item} />
-                ))
-              )}
+              {renderTableBody()}
             </tbody>
           </table>
 
