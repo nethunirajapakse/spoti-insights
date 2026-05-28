@@ -56,13 +56,7 @@ most, and how your taste breaks down by genre.
 
 ---
 
-## Screenshots
-
-<!-- ========================================================= -->
-<!-- Add 3-5 screenshots showing the breadth of the app.       -->
-<!-- Suggested set below. Put images in docs/screenshots/ and  -->
-<!-- uncomment each line as you add them.                      -->
-<!-- ========================================================= -->
+## App preview
 
 ### Dashboard
 <img width="1351" height="628" alt="image" src="https://github.com/user-attachments/assets/b34fff61-2fcc-45c6-8672-5785fe3dd881" />
@@ -131,8 +125,6 @@ most, and how your taste breaks down by genre.
                    └──────────────┘
 ```
 
-<!-- Optional: replace the ASCII diagram above with a real architecture -->
-<!-- image if you make one. ![Architecture](docs/architecture.png)      -->
 
 **Data flow in brief:** the user authenticates via Spotify OAuth2; the backend
 stores JWTs in httpOnly cookies. A scheduled job continuously syncs the user's
