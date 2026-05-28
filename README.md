@@ -185,14 +185,6 @@ npm run dev
 App runs at `http://127.0.0.1:5173`, backend at `http://127.0.0.1:8000`
 (API docs at `/api/docs`).
 
-### Run with Docker
-<!-- Keep this section only if you've added the Docker setup. -->
-```bash
-docker compose up --build
-```
-Spins up the backend, Postgres, and Redis together. See
-[DOCKER_SETUP_GUIDE.md](DOCKER_SETUP_GUIDE.md) for details.
-
 ---
 
 ## Auth & Cookies
