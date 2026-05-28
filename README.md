@@ -253,10 +253,7 @@ Tracked in [Issues](../../issues). Highlights:
 
 ## License
 
-<!-- Pick one. MIT is the common, permissive default for portfolio projects. -->
-<!-- If you add a LICENSE file, reference it here. -->
 MIT
-```
 
 ---
 
