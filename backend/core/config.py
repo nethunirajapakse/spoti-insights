@@ -48,7 +48,7 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
     
     # CORS and Cookies
-    frontend_url: str = Field(default="http://127.0.0.1:5173", alias="FRONTEND_URL")
+    frontend_url: str = Field(alias="FRONTEND_URL")
     cookie_domain: Optional[str] = Field(default=None, alias="COOKIE_DOMAIN")
 
     # Cookie Expiration Times
