@@ -6,13 +6,7 @@ insights you can't get from Spotify directly — listening trends over time, gen
 distribution, hourly activity patterns, and your top artists and tracks by
 real play count.
 
-<!-- ========================================================= -->
 <!-- SCREENSHOT 1: Hero / Dashboard                            -->
-<!-- Add your best, most impressive screenshot here — the full -->
-<!-- dashboard with stat cards, the listening-trend chart, and -->
-<!-- the genre donut. This is the first thing people see.      -->
-<!-- ========================================================= -->
-<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
 
 > **Live demo:** [spoti-insights-app](https://spoti-insights-app.onrender.com/)
 
@@ -98,7 +92,6 @@ most, and how your taste breaks down by genre.
 
 **Infrastructure**
 - Deployed on Render (static site + web service + managed Postgres/Redis)
-- Docker / Docker Compose for local development <!-- remove if not added yet -->
 
 ---
 
