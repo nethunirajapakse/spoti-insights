@@ -182,7 +182,7 @@ const PlaylistLibrary = () => {
 
             <div className="pt-6 border-t border-white/5">
               <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                Currently tracking <span className="text-white font-bold">{playlistsItems.length}</span> collections. Use the infinite query controller to append remaining listings down line.
+                Viewing {playlistsItems.length} items from your collection. Scroll down to view more.
               </p>
             </div>
           </div>

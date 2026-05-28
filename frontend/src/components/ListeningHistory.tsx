@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, RefreshCw, Loader2, ArrowUp } from "lucide-react";
+import { TrendingUp, RefreshCw, Loader2, ArrowUp, Disc3 } from "lucide-react";
 import { useHistory } from "@/hooks/useHistory";
 import { useTodaySummary } from "@/hooks/useTodaySummary";
 import type { HistoryItem } from "@/api/analytics";
@@ -189,12 +189,15 @@ const ListeningHistory = () => {
           </button>
         </div>
 
-        {/* Analytics Card */}
-        <div className="glass-card p-6 rounded-2xl shadow-xl w-full">
-          <h3 className="font-bold mb-6 flex items-center gap-2 text-white">
+        <div className="glass-card p-6 rounded-2xl shadow-xl w-full relative overflow-hidden border border-white/5">
+          <div className="absolute -top-4 -right-4 opacity-5 rotate-12 text-white pointer-events-none">
+            <Disc3 size={120} />
+          </div>
+
+          <h3 className="font-bold mb-6 flex items-center gap-2 text-white relative z-10">
             <TrendingUp className="text-primary" size={18} /> Today's Activity
           </h3>
-          <div className="space-y-6">
+          <div className="space-y-6 relative z-10">
             <div>
               <p className="text-[10px] uppercase text-outline font-bold tracking-wider mb-1">
                 Tracks Today
