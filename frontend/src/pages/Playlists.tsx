@@ -1,11 +1,11 @@
-import Playlists from "@/components/Playlists";
+import PlaylistLibrary from "@/components/Playlists";
 
-const History = () => {
+const Playlists = () => {
   return (
     <div>
-      <Playlists />
+      <PlaylistLibrary />
     </div>
-  )
-}
+  );
+};
 
-export default History
+export default Playlists;

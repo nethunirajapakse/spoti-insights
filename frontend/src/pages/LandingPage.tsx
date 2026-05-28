@@ -13,7 +13,8 @@ const LandingPage = () => {
   };
 
   const errorMessages: Record<string, string> = {
-    state_missing: "Login session expired or cookies were blocked. Please try again.",
+    state_missing:
+      "Login session expired or cookies were blocked. Please try again.",
     state_mismatch: "Security check failed. Please try logging in again.",
     spotify_auth_failed: "Spotify login was declined. Please try again.",
     server_error: "Something went wrong on our end. Please try again shortly.",
@@ -21,7 +22,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0b0b0b] text-white p-6 relative overflow-hidden">
-      
+
       {/* Animated Ambient Background Blobs */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#53e076]/10 rounded-full blur-[140px] pointer-events-none animate-float-1" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#46bd63]/6 rounded-full blur-[160px] pointer-events-none animate-float-2" />
@@ -52,14 +53,14 @@ const LandingPage = () => {
         </h1>
 
         <p className="text-zinc-400 text-base sm:text-lg max-w-sm font-medium leading-relaxed mb-8">
-          Deep dive into your listening habits, playlists trends, and personalized audio metrics.
+          Deep dive into your listening habits, playlists trends, and
+          personalized audio metrics.
         </p>
 
-        {/* Button retains its specific high-end hover settings */}
         <Button
           label="Connect with Spotify"
           onClick={handleLoginClick}
-          className="!bg-[#53e076] hover:!bg-[#46bd63] !text-black !font-bold !px-10 !py-4.5 !text-base !rounded-full shadow-lg shadow-[#53e076]/20 transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] hover:shadow-[#53e076]/30"
+          className="!bg-[#53e076]/5 hover:!bg-[#53e076]/10 !text-green-300 hover:!text-[#53e076] !border !border-[#53e076]/20 hover:!border-[#53e076]/40 !py-3.5 !px-10 !text-sm !font-semibold !rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99]"
         />
       </div>
     </div>

@@ -74,8 +74,8 @@ const Sidebar = () => {
             <h1 className="text-2xl font-black text-primary tracking-tighter italic">
               Spoti-Insights
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-outline font-bold mt-1">
-              Premium Analyst
+            <p className="text-[9px] uppercase tracking-[0.25em] text-outline font-black mt-1">
+              Advanced Analytics
             </p>
           </div>
           <button
@@ -106,7 +106,9 @@ const Sidebar = () => {
                 size={20}
                 className="group-hover:scale-110 transition-transform"
               />
-              <span className="text-sm font-medium tracking-tight">{item.name}</span>
+              <span className="text-sm font-medium tracking-tight">
+                {item.name}
+              </span>
             </NavLink>
           ))}
         </nav>

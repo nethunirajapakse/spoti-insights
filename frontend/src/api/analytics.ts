@@ -81,6 +81,19 @@ export interface HourlyVelocityResponse {
   hours: HourBucket[];
 }
 
+export interface HistoryItem {
+  id: number;
+  track_id: string;
+  track_name: string;
+  artist_id: string;
+  artist_name: string;
+  album_id: string;
+  album_name: string;
+  album_art_url?: string;
+  duration_ms: number;
+  played_at: string; // ISO datetime
+}
+
 export const getOverview = async (days = 30): Promise<OverviewResponse> => {
   const response = await api.get("/deep-analytics/overview", { params: { days } });
   return response.data;
@@ -109,5 +122,22 @@ export const getTodaySummary = async (): Promise<TodaySummaryResponse> => {
 
 export const getHourlyVelocity = async (): Promise<HourlyVelocityResponse> => {
   const response = await api.get("/deep-analytics/hourly-velocity");
+  return response.data;
+};
+
+export interface HistoryResponse {
+  items: HistoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const getHistory = async (
+  page: number,
+  limit: number,
+): Promise<HistoryResponse> => {
+  const response = await api.get("/deep-analytics/history", {
+    params: { page, limit },
+  });
   return response.data;
 };
