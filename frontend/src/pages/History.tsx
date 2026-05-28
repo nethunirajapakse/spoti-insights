@@ -5,7 +5,7 @@ const History = () => {
     <div>
       <ListeningHistory />
     </div>
-  )
-}
+  );
+};
 
-export default History
+export default History;
