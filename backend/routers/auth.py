@@ -44,7 +44,7 @@ async def spotify_login(request: Request):
         value=state,
         max_age=settings.oauth_state_max_age,
         httponly=True,
-        samesite="lax",         # lax so the cookie is sent on the redirect back
+        samesite="none",
         secure=settings.cookie_secure,
         domain=settings.cookie_domain,
         path="/",
