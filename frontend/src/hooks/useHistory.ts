@@ -17,17 +17,14 @@ export const useHistory = (limit = 20) => {
     queryFn: ({ pageParam }) => getHistory(pageParam, limit),
     initialPageParam: 1,
     getNextPageParam: (lastPage: HistoryResponse) => {
-      // We've loaded everything once accumulated rows >= total.
       const loadedSoFar = lastPage.page * lastPage.limit;
       return loadedSoFar < lastPage.total ? lastPage.page + 1 : undefined;
     },
   });
 
-  // Flatten all loaded pages into a single list for easy rendering.
   const historyItems = data?.pages.flatMap((p) => p.items) ?? [];
   const totalCount = data?.pages[0]?.total ?? 0;
 
-  // Refresh resets to page 1 by invalidating the whole infinite query.
   const refreshHistory = () => queryClient.invalidateQueries({ queryKey });
 
   return {
