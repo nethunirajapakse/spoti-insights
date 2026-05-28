@@ -212,9 +212,8 @@ are configured as `SameSite=None; Secure` in production and `SameSite=Lax`
 locally, derived automatically from the `ENVIRONMENT` variable. The cross-domain
 production setup relies on third-party cookies, which incognito mode and Safari
 block by default — the permanent fix is hosting both under a shared parent
-domain (`app.example.com` + `api.example.com`). See
-[deployment notes](docs/deployment-cookie-notes.md) for the full reasoning.
-<!-- adjust the path above if you put the notes file elsewhere -->
+domain (`app.example.com` + `api.example.com`). <!-- See
+[deployment notes](docs/deployment-cookie-notes.md) for the full reasoning. -->
 
 ---
 
