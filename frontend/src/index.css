@@ -52,3 +52,21 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #1a211a #0e150e;
 }
+
+@layer utilities {
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-25px) scale(1.08); }
+  }
+  @keyframes float-reverse {
+    0%, 100% { transform: translateY(0px) scale(1.05); }
+    50% { transform: translateY(30px) scale(0.95); }
+  }
+
+  .animate-float-1 {
+    animation: float-slow 8s ease-in-out infinite;
+  }
+  .animate-float-2 {
+    animation: float-reverse 11s ease-in-out infinite;
+  }
+}
