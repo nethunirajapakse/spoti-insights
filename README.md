@@ -14,7 +14,7 @@ real play count.
 <!-- ========================================================= -->
 <!-- ![Dashboard](docs/screenshots/dashboard.png) -->
 
-> **Live demo:** <!-- ADD LINK or write "Available on request" -->
+> **Live demo:** [spoti-insights-app](https://spoti-insights-app.onrender.com/)
 > _Note: the live demo uses cross-domain cookies; if login fails in
 > incognito/Safari, that's third-party-cookie blocking — see
 > [Auth & Cookies](#auth--cookies)._
@@ -63,11 +63,13 @@ most, and how your taste breaks down by genre.
 <!-- uncomment each line as you add them.                      -->
 <!-- ========================================================= -->
 
-<!-- ### Dashboard -->
-<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+### Dashboard
+<img width="1351" height="628" alt="image" src="https://github.com/user-attachments/assets/b34fff61-2fcc-45c6-8672-5785fe3dd881" />
 
-<!-- ### Listening History (infinite scroll, relative timestamps) -->
-<!-- ![History](docs/screenshots/history.png) -->
+
+
+### Listening History (infinite scroll, relative timestamps)
+<img width="1351" height="628" alt="image" src="https://github.com/user-attachments/assets/b3c3d5aa-db0b-48bb-a2cb-fa504b622304" />
 
 <!-- ### Playlists -->
 <!-- ![Playlists](docs/screenshots/playlists.png) -->
