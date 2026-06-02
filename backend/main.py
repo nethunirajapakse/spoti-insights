@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from backend.routers import auth, user, analytics, health, deep_analytics
+from backend.routers import auth, access, user, analytics, health, deep_analytics
 from backend.middleware.cors import configure_middleware
 from backend.middleware.logging_middleware import RequestLoggingMiddleware
 from backend.middleware.error_handler import (
@@ -113,6 +113,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SlowAPIMiddleware)
 
     app.include_router(auth.router)
+    app.include_router(access.router)
     app.include_router(user.router)
     app.include_router(analytics.router)
     app.include_router(health.router)
