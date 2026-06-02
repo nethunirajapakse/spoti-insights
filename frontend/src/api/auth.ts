@@ -13,3 +13,7 @@ export const getCurrentUser = async () => {
 export const logoutUser = async () => {
   await api.post("/public/auth/logout");
 };
+
+export const requestAccess = async (emailAddress: string) => {
+  await api.post("/request-access", { email: emailAddress });
+};

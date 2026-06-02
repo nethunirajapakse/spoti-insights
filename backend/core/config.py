@@ -92,6 +92,10 @@ All endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
         "playlist-read-collaborative user-read-recently-played"
     )
     
+    # Resend API Configuration
+    resend_api_key: Optional[str] = Field(default=None, alias="RESEND_API_KEY")
+    destination_email: Optional[str] = Field(default=None, alias="DESTINATION_EMAIL")
+
     # Computed properties
     @property
     def is_production(self) -> bool:
