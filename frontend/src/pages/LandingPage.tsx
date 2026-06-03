@@ -86,8 +86,7 @@ const LandingPage = () => {
           <div className="max-w-md text-left p-6 rounded-2xl mt-6 mb-8 backdrop-blur-md border border-white/10 bg-white/[0.02] w-full">
             <p className="text-zinc-300 text-sm leading-relaxed mb-4">
               Per Spotify's Web API policy, apps in development mode can only be
-              used by accounts explicitly added to the developer's allowlist
-              (limited to 25 users).
+              used by accounts explicitly added to the developer's allowlist.
             </p>
             <p className="text-zinc-300 text-sm leading-relaxed mb-6">
               This project is currently awaiting formal review. If you'd like to
