@@ -53,8 +53,7 @@ most, and how your taste breaks down by genre.
 ## App preview
 
 ### Dashboard
-<img width="1351" height="628" alt="image" src="https://github.com/user-attachments/assets/b34fff61-2fcc-45c6-8672-5785fe3dd881" />
-
+<img width="1365" height="632" alt="Screenshot 2026-06-26 175303" src="https://github.com/user-attachments/assets/e56f5c1b-8fa3-40eb-9458-4fe61a9f4753" />
 
 
 ### Listening History (infinite scroll, relative timestamps)
