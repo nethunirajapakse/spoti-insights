@@ -233,12 +233,6 @@ Tracked in [Issues](../../issues). Highlights:
 
 ---
 
-## License
-
-MIT
-
----
-
 ## Acknowledgements
 
 Built as a full-stack portfolio project. Spotify data accessed via the
