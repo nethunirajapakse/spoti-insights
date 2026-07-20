@@ -188,16 +188,15 @@ App runs at `http://127.0.0.1:5173`, backend at `http://127.0.0.1:8000`
 
 ## Auth & Cookies
 
-Auth tokens are stored in **httpOnly cookies** (not localStorage) so they can't
-be read by JavaScript — this protects them from XSS.
+Spoti-Insights uses **httpOnly cookies** to store authentication tokens instead of browser storage (`localStorage`). This means scripts cannot read your login token, protecting your account against Cross-Site Scripting (XSS) attacks.
 
-Because the deployed frontend and backend live on different domains, cookies
-are configured as `SameSite=None; Secure` in production and `SameSite=Lax`
-locally, derived automatically from the `ENVIRONMENT` variable. The cross-domain
-production setup relies on third-party cookies, which incognito mode and Safari
-block by default — the permanent fix is hosting both under a shared parent
-domain (`app.example.com` + `api.example.com`). <!-- See
-[deployment notes](docs/deployment-cookie-notes.md) for the full reasoning. -->
+### Cross-Domain Limitations
+Because the frontend and backend are hosted on separate domains in production, cookies are sent using `SameSite=None; Secure`. Modern browsers treat cross-domain cookies as **third-party cookies**:
+
+* **Incognito Mode & Safari:** Block third-party cookies by default, which prevents login sessions from persisting.
+* **Chrome / Firefox:** May display console warnings or security banners regarding third-party cookie deprecation.
+
+> **Note:** If login fails in Incognito or Safari, disable third-party cookie blocking for this site. The permanent architectural fix is custom domains sharing a common parent (e.g., `app.domain.com` and `api.domain.com`).
 
 ---
 
