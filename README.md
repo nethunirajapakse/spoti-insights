@@ -21,7 +21,7 @@ real play count.
 Spotify's own app shows you "Wrapped" once a year and a fixed "recently played"
 list capped at 50 tracks. Spoti-Insights runs a background job that captures
 every play into a persistent database, so it can compute analytics over
-arbitrary time windows that Spotify's API alone can't provide — your real
+arbitrary time windows that Spotify's API alone can't provide. your real
 top tracks by play count, daily listening trends, when in the day you listen
 most, and how your taste breaks down by genre.
 
