@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { getSpotifyAuthUrl } from "@/api/auth";
 import Button from "@/components/ui/Button";
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { useDemoStore } from "@/store/useDemoStore";
 
 const SpotifyIcon = ({ className }: { className: string }) => (
   <svg
@@ -14,9 +17,12 @@ const SpotifyIcon = ({ className }: { className: string }) => (
 
 const SignUpForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const { startDemo } = useDemoMode();
 
   const handleSpotifyLogin = async () => {
     setIsLoading(true);
+    // A real login must never land back in sample-data mode.
+    useDemoStore.getState().disable();
     try {
       const authUrl = await getSpotifyAuthUrl();
       if (authUrl) {
@@ -50,6 +56,29 @@ const SignUpForm = () => {
         isLoading={isLoading}
         className="!w-full !bg-[#53e076]/5 hover:!bg-[#53e076]/10 !text-zinc-200 hover:!text-[#53e076] !border !border-[#53e076]/20 hover:!border-[#53e076]/40 !py-3.5 !px-4 !text-sm !font-semibold !rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99]"
       />
+
+      <div className="w-full mt-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold">
+            or
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <button
+          type="button"
+          onClick={startDemo}
+          className="w-full flex items-center justify-center gap-2 bg-[#53e076] hover:bg-[#46bd63] text-black font-semibold text-sm py-3.5 px-4 rounded-xl transition-colors cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4" />
+          Explore with sample data
+        </button>
+        <p className="text-[11px] text-zinc-500 text-center font-medium leading-normal mt-3 px-2">
+          Spotify only lets allowlisted accounts sign in to apps in development
+          mode. Not on the list? The demo shows everything with no login.
+        </p>
+      </div>
 
       <footer className="mt-8 pt-4 border-t border-white/5 w-full">
         <p className="text-[11px] text-zinc-500 text-center font-medium leading-normal px-2">

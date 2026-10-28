@@ -2,11 +2,19 @@ import spotiInsightsLogo from "../assets/logo.png";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import { AlertCircle, Mail, Loader2, CheckCircle2 } from "lucide-react";
+import {
+  AlertCircle,
+  Mail,
+  Loader2,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
 import { requestAccess } from "@/api/auth";
+import { useDemoMode } from "@/hooks/useDemoMode";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { startDemo } = useDemoMode();
   const [params] = useSearchParams();
   const error = params.get("error");
 
@@ -84,14 +92,36 @@ const LandingPage = () => {
           </p>
 
           <div className="max-w-md text-left p-6 rounded-2xl mt-6 mb-8 backdrop-blur-md border border-white/10 bg-white/[0.02] w-full">
-            <p className="text-zinc-300 text-sm leading-relaxed mb-4">
-              Per Spotify's Web API policy, apps in development mode can only be
-              used by accounts explicitly added to the developer's allowlist.
+            <p className="text-zinc-300 text-sm leading-relaxed mb-5">
+              Spotify restricts apps in development mode to an approved list of
+              accounts, and yours isn't on it yet. That's a Spotify rule, not
+              something wrong with your account.
             </p>
-            <p className="text-zinc-300 text-sm leading-relaxed mb-6">
-              This project is currently awaiting formal review. If you'd like to
-              test it out, share your Spotify account email below to request
-              manual whitelisting.
+
+            {/* Primary path: skip the login entirely */}
+            <button
+              type="button"
+              onClick={startDemo}
+              className="w-full flex items-center justify-center gap-2 bg-[#53e076] hover:bg-[#46bd63] text-black font-semibold text-sm py-3 px-4 rounded-xl transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              Explore the live demo instead
+            </button>
+            <p className="text-zinc-500 text-xs text-center mt-2 mb-6">
+              The full dashboard with sample data. No login needed.
+            </p>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 bg-white/10" />
+              <span className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold">
+                or use your own data
+              </span>
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+
+            <p className="text-zinc-300 text-sm leading-relaxed mb-4">
+              Share your Spotify account email below and I'll add you to the
+              allowlist manually.
             </p>
 
             {/* Email form UI handling submission and delivery feedback loops */}
@@ -120,7 +150,7 @@ const LandingPage = () => {
                 <button
                   type="submit"
                   disabled={status === "submitting"}
-                  className="w-full flex items-center justify-center gap-2 bg-[#53e076] hover:bg-[#46bd63] disabled:bg-zinc-800 text-black disabled:text-zinc-500 font-semibold text-sm py-3 px-4 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 disabled:bg-zinc-800 text-zinc-200 disabled:text-zinc-500 font-semibold text-sm py-3 px-4 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
                 >
                   {status === "submitting" ? (
                     <>
@@ -167,11 +197,27 @@ const LandingPage = () => {
             personalized audio metrics.
           </p>
 
-          <Button
-            label="Connect with Spotify"
-            onClick={handleLoginClick}
-            className="!bg-[#53e076]/5 hover:!bg-[#53e076]/10 !text-green-300 hover:!text-[#53e076] !border !border-[#53e076]/20 hover:!border-[#53e076]/40 !py-3.5 !px-10 !text-sm !font-semibold !rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99]"
-          />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={startDemo}
+              className="flex items-center justify-center gap-2 bg-[#53e076] hover:bg-[#46bd63] text-black font-semibold text-sm py-3.5 px-8 rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              Try the live demo
+            </button>
+            <Button
+              label="Connect with Spotify"
+              onClick={handleLoginClick}
+              className="!bg-[#53e076]/5 hover:!bg-[#53e076]/10 !text-green-300 hover:!text-[#53e076] !border !border-[#53e076]/20 hover:!border-[#53e076]/40 !py-3.5 !px-8 !text-sm !font-semibold !rounded-xl transition-all duration-300 shadow-xl shadow-black/40 hover:scale-[1.01] active:scale-[0.99]"
+            />
+          </div>
+
+          <p className="text-zinc-500 text-xs max-w-xs leading-relaxed mt-5">
+            The demo shows the full dashboard with sample data, no login needed.
+            Connecting your own account is limited to allowlisted users while
+            the app is in Spotify's development mode.
+          </p>
         </div>
       )}
     </div>
