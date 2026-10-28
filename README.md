@@ -17,7 +17,7 @@ real play count.
 ### Try it without a Spotify account
 
 Spotify limits apps in development mode to an allowlist of accounts, so most
-visitors can't sign in. To make the project easy to evaluate, the landing page
+visitors can't sign in. To make it easy to look around the project, the landing page
 has a **Try the live demo** button that opens the full dashboard, history and
 playlists with built-in sample data. No login, no backend calls, and it works
 instantly even if the free-tier server is asleep.
