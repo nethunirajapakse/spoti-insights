@@ -11,7 +11,7 @@ real play count.
 > **Live demo:** [spoti-insights-app](https://spoti-insights-app.onrender.com/)
 
 > _Note: the live demo uses cross-domain cookies; if login fails in
-> incognito/Safari, that's third-party-cookie blocking — see
+> incognito/Safari, that's third-party-cookie blocking. see
 > [Auth & Cookies](#auth--cookies)._
 
 ---
