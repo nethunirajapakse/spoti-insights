@@ -14,6 +14,23 @@ real play count.
 > incognito/Safari, that's third-party-cookie blocking. see
 > [Auth & Cookies](#auth--cookies)._
 
+### Try it without a Spotify account
+
+Spotify limits apps in development mode to an allowlist of accounts, so most
+visitors can't sign in. To make the project easy to evaluate, the landing page
+has a **Try the live demo** button that opens the full dashboard, history and
+playlists with built-in sample data. No login, no backend calls, and it works
+instantly even if the free-tier server is asleep.
+
+- A banner on every page makes it clear you're looking at sample data.
+- The data is generated from one seeded set of invented artists and tracks, so
+  the stat cards, trend chart, hourly activity, genres and history all agree
+  with each other. Dates are relative to today, so it always looks current.
+- It's implemented as a thin layer in the frontend API module (`src/api`):
+  each call checks a demo flag and returns sample data in the same shape as the
+  real response, so components and hooks are identical in both modes. See
+  `frontend/src/demo/`.
+
 ---
 
 ## Why this exists
@@ -215,6 +232,7 @@ Because the frontend and backend are hosted on separate domains in production, c
 ├── frontend/
 │   └── src/
 │       ├── api/          # axios client + API functions
+│       ├── demo/         # sample data + API shim behind demo mode
 │       ├── components/   # dashboard, layout, ui components
 │       ├── hooks/        # React Query hooks
 │       └── pages/

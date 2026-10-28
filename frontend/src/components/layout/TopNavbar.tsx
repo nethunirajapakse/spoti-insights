@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useLogout } from "@/hooks/useLogout";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import Button from "@/components/ui/Button";
 
 const TITLES: Record<string, string> = {
@@ -14,6 +15,7 @@ const TITLES: Record<string, string> = {
 const TopNavbar = () => {
   const { data: user } = useCurrentUser();
   const { mutate: handleLogout, isPending } = useLogout();
+  const { isDemo, exitDemo } = useDemoMode();
   const location = useLocation();
   const title = TITLES[location.pathname] ?? "Overview";
 
@@ -97,12 +99,16 @@ const TopNavbar = () => {
             {/* Action Buttons Stack */}
             <div className="flex flex-col gap-2">
               <Button
-                label="Sign out"
+                label={isDemo ? "Exit demo" : "Sign out"}
                 variant="secondary"
                 isLoading={isPending}
                 onClick={() => {
                   setIsMenuOpen(false);
-                  handleLogout();
+                  if (isDemo) {
+                    exitDemo();
+                  } else {
+                    handleLogout();
+                  }
                 }}
                 className="!w-full !bg-transparent hover:!bg-red-500/10 !text-zinc-300 hover:!text-red-400 !border !border-white/10 hover:!border-red-500/20 !shadow-none !py-3 !px-4 !text-sm !font-medium transition-colors"
               />

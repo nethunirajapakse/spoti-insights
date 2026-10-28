@@ -27,8 +27,10 @@ interface ChartGeometry {
   axisLabels: string[];
 }
 
+// Parse "YYYY-MM-DD" as a local date. `new Date("2026-10-29")` is read as UTC
+// midnight, which renders as the previous day for viewers west of UTC.
 const formatLabel = (dateStr: string) =>
-  new Date(dateStr)
+  new Date(`${dateStr}T00:00:00`)
     .toLocaleDateString("en-US", { month: "short", day: "numeric" })
     .toUpperCase();
 
